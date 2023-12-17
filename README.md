@@ -6,3 +6,8 @@ This repository holds the source code, benchmarks and results of the work presen
 2) Vivado 2019.2
 
 # Repository Organization
+
+# Results Reproduction
+
+# Contact
+For any questions, please contact Ayatallah Elakhras (ayatallah.elakhras@epfl.ch).
