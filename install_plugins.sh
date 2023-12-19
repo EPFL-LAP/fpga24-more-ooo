@@ -12,3 +12,5 @@ cp -r plugins/dot2vhdl ../
 
 rm -r ../elastic-circuits
 cp -r plugins/elastic-circuits ../
+
+cp -r plugins/tagging_info.txt ../
