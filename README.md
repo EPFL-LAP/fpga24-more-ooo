@@ -13,5 +13,16 @@ This repository holds the source code, benchmarks and results of the work presen
 
 # Results Reproduction
 
+# Clone this repository
+
+# Ensure that tools installations comply with our scripts
+
+# Install our plugins into Dynamatic
+
+# Run the HLS flow and simulate the designs
+
+# Synthesize and place and route
+[TO ADD the files needed for FP synthesis to the repo...]
+
 # Contact
 For any questions, please contact Ayatallah Elakhras (ayatallah.elakhras@epfl.ch).
