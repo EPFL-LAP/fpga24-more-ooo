@@ -14,11 +14,22 @@ This repository holds the source code, benchmarks and results of the work presen
 ## Results Reproduction
 
 ### Clone this repository
+Inside the VM, execute the following commands from a terminal.
+```
+cd Dynamatic/etc/dynamatic/
+git clone git@github.com:EPFL-LAP/fpga24-more-ooo.git
+```
 
 ### Ensure that tools installations comply with our scripts
+[TO REMOVE IF NOT NECESSARY]
 
 ### Install our plugins into Dynamatic
-
+To install our plugins into Dynamatic's infrastructure, run the following commands from a terminal. 
+```
+cd Dynamatic/etc/dynamatic/fpga24-more-ooo/
+chmod +x install_plugins.sh
+bash ./install_plugins.sh
+```
 ### Run the HLS flow and simulate the designs
 
 ### Synthesize and place and route
