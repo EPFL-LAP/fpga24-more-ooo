@@ -2,7 +2,7 @@
 This repository holds the source code, benchmarks and results of the work presented in the "Survival of the Fastest: Enabling More Out-of-Order Execution in Dataflow Circuits" paper, which allows for new levels of out-of-order execution, not achievable by prior work, in dataflow circuits.
 
 ## Prerequisites
-1) We prepared a virtual machine (VM) containing an installation of the Dynamatic tool, that we implemented our technique within, with its dependencies. It also contains an installation of Modelsim 20.1, which we use to get the cycles count. The VM is available through the following link [TO ADD] and is compatible with VirtualBox 5.2 or above. Please follow the following steps to install it:
+1) We prepared a virtual machine (VM) containing an installation of the Dynamatic tool, that we implemented our technique within, with its dependencies. It also contains an installation of Modelsim 20.1, which we use to get the cycles count. The VM is available through the following link https://drive.google.com/file/d/1-WE5ffLJNCAGaBMgAMR08HGpS6jcgVTJ/view and is compatible with VirtualBox 5.2 or above. Please follow the following steps to install it:
    - Extract the zip file of the VM image on your machine. The extracted folder contains a .vbox, which contains the settings required to run the VM and the .vdi, which contains the virtual hard drive.
    - Add the machine by opening the VirtualBox application and clicking on "Machine" -> "+Add", then selecting the file "DynamaticVM.vbox".
    - Start the machine by clicking on "Start".
