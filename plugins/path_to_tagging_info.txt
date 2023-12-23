@@ -1,0 +1,1 @@
+/home/dynamatic/Dynamatic/etc/dynamatic/Regression_test/examples/bicg/tagging_info.txt
