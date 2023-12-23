@@ -13,8 +13,7 @@ This repository holds the source code, benchmarks and results of the work presen
 
 This repository is composed of two main directories:
 1) plugins/ holds the implementation of the technique presented in the paper as a set of plugins that should be installed into the Dynamatic tool through the provided install_plugins.sh script.
-2) experiments/ holds the (i) C++ source code files of the benchmarks used for generating the results reported in the paper, (ii) the tagging information for each benchmark composed of the number of tags used and information about which components are out-of-order or MERGEs, (iii) hls_verifier that verifies the correctness of the generated circuits, (iv) scripts that automate the process of running the HLS tool, simulating, synthesizing the generated designs and reporting the results.
-
+2) experiments/ holds the (i) C++ source code files of the benchmarks used for generating the results reported in the paper, (ii) the tagging information for each benchmark, composed of the number of tags used and information about which components are out-of-order or MERGEs, (iii) hls_verifier that verifies the correctness of the generated circuits, (iv) scripts that automate the process of running the HLS tool, simulating, synthesizing the generated designs and reporting the results.
 
 ## Results Reproduction
 
@@ -24,7 +23,6 @@ Inside the VM, execute the following commands from a terminal.
 cd Dynamatic/etc/dynamatic/
 git clone git@github.com:EPFL-LAP/fpga24-more-ooo.git
 ```
-
 ### Install our plugins inside Dynamatic
 To install our plugins into Dynamatic's infrastructure, run the following commands from a terminal. 
 ```
@@ -32,6 +30,7 @@ cd Dynamatic/etc/dynamatic/fpga24-more-ooo/
 chmod +x install_plugins.sh
 bash ./install_plugins.sh
 ```
+
 ### Run the HLS flow and simulate the designs
 To generate our tagged circuits for each of the C++ source files of our benchmarks, run the following commands from a terminal. 
 ```
@@ -39,19 +38,6 @@ cd Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments
 chmod +x compile_simulate_test_ours.sh
 bash ./compile_simulate_test_ours.sh
 ```
-The previous commands do the following for each of the benchmarks, one after the other:
-1) Run our HLS flow to generate VHDL netlists
-2) Simulate the generated designs using Modelsim 20.1 to report the cycles count
-3) Run the HLS verifier to verify the correctness of our designs.
-
-The outcome of this step is the generation of the following reports for each benchmark in the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/simulation_reports_ours/ directory, where benchmarkName is replaced with the corresponding benchmark name.
-1) benchmarkName_detailed_sim.rpt which contains the detailed report that records the outputs of the different passes of Dynamatic as well as outputs from the Modelsim simulation. 
-2) benchmarkName_verification.rpt which reports the output of the HLS verifier. A "Pass" indicates the correcntess of the design.
-3) benchmarkName_cycles_count.rpt which contains the simulation time and the cycle count of the corresponding benchmark.
-
-If you would like to check the generated designs (HDL netlists), go to the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/benchmarks/benchmarkName/hdl directory, where benchmarkName should be the name of the benchmark of your choice.
-
-If you would like to simulate the generated desgins using Modelsim, go to the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/benchmarks/benchmarkName/sim/HLS_VERIFY directory where you will find the Modelsim project there.
 
 To generate the untagged baseline's circuits for each of the C++ source files of our benchmarks, run the following commands from a terminal. 
 ```
@@ -59,6 +45,20 @@ cd Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments
 chmod +x compile_simulate_test_baseline.sh
 bash ./compile_simulate_test_baseline.sh
 ```
+
+The previous commands do the following for each of the benchmarks, one after the other:
+1) Run our HLS flow to generate VHDL netlists
+2) Simulate the generated designs using Modelsim 20.1 to report the cycles count
+3) Run the HLS verifier to verify the correctness of our designs.
+
+The outcome of this step is the generation of the following reports for each benchmark in the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/simulation_reports_ours/ directory for our tagged circuits' reports or Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/simulation_reports_baseline/ directory for our baseline's reports. For each of the following, benchmarkName is replaced with the corresponding benchmark name.
+1) benchmarkName_detailed_sim.rpt which contains the detailed report that records the outputs of the different passes of Dynamatic as well as outputs from the Modelsim simulation. 
+2) benchmarkName_verification.rpt which reports the output of the HLS verifier. A "Pass" indicates the correcntess of the design.
+3) benchmarkName_cycles_count.rpt which contains the simulation time and the cycle count of the corresponding benchmark.
+
+If you would like to check the generated designs (HDL netlists), go to the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/benchmarks/benchmarkName/hdl directory, where benchmarkName should be the name of the benchmark of your choice.
+
+If you would like to simulate the generated desgins using Modelsim, go to the Dynamatic/etc/dynamatic/fpga24-more-ooo/experiments/benchmarks/benchmarkName/sim/HLS_VERIFY directory where you will find the Modelsim project there.
 
 ### Synthesize and place and route
 [TO ADD the files needed for FP synthesis to the repo...] [Also, to require a specific path for Vivado's installation..]
