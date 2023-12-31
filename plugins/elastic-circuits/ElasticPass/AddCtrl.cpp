@@ -4,6 +4,10 @@
 
 #include <math.h>
 
+void delete_dbg_file(const std::string& filename) {
+    remove(filename.c_str());
+}
+
 // AYA: 06/09/2023: Added the following function to make sure that the inputs of the INIT are "false" always at in0 and "true" at in1 except one "false" in the end to take us back to the initial state
 void CircuitGenerator::fix_INIT_inputs() {
 	ENode* init = nullptr;
@@ -1077,6 +1081,8 @@ void CircuitGenerator::deliver_ACK_tokens_cond_st() {
 
     }
 
+    delete_dbg_file("st_end_bbs_dep.txt");
+
 }
 
 
@@ -1396,6 +1402,7 @@ void CircuitGenerator::WRONG_deliver_ACK_tokens() {
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	}
 
+	delete_dbg_file("st_end_bbs_dep.txt");
 
 }
 
@@ -1650,6 +1657,8 @@ void CircuitGenerator::FindPiers_for_constant(ENode* cst_node) {
 	delete bridges_indices;
 
 	delete branches;
+
+	delete_dbg_file("add_bridges_dbg_constants.txt");
 
 }
 
@@ -3905,6 +3914,10 @@ void CircuitGenerator::setMuxes_nonLoop() {
 
 	}  // end of loop over all enodes
 
+	delete_dbg_file("f0_f1_Merge_check.txt");
+
+	delete_dbg_file("shannon's_debug.txt");
+
 }
 
 
@@ -4325,6 +4338,10 @@ void CircuitGenerator::new_setMuxes() {
 
 	// AYA: 28/02/2022: Added a function to fix the branch conditions! (i.e., to avoid that the condition of a Branch is negated
 	//FixBranchesCond();
+
+	delete_dbg_file("f0_f1_Merge_check.txt");
+
+	delete_dbg_file("shannon's_debug.txt");
 }
 
 void CircuitGenerator::my_swapVectors(std::vector<ENode*>* vec_1, std::vector<ENode*>* vec_2) {

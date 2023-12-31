@@ -69,7 +69,15 @@ class BBNode;
 class ENode {
 
 public:
+    // AYA: 26/12/2023: added the following fields that should take a value for ENodes of type loop_cmerge or if_else_cmerge!!
+    ENode* tagger = nullptr;
+    ENode* un_tagger = nullptr;
+    int tagging_count = 0;
+    // AYA: 26/12/2023:
+    int tagger_id = -1; // this field is relevant only for ENodes of type aligner_mux and aligner_branch and un_tagger
+
     bool is_tagged = false;
+
     bool is_st_ack_to_end = false; // true only for branches and phis that are added between a ST and END in delivering the ST acks
 
 	// AYA: 23/02/2022:

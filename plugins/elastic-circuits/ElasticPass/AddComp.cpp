@@ -1513,6 +1513,8 @@ void CircuitGenerator::extraCheck_AddBranchSuccs() {
 								int idx = pos - enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->begin();
 								enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->at(idx) = fork_node;
 							}
+							fork_node->is_tagged = fork_node->JustCntrlPreds->at(0)->is_tagged;
+							fork_node->tagging_count++;
 					}
 				}	
 				break;
@@ -1553,6 +1555,9 @@ void CircuitGenerator::extraCheck_AddBranchSuccs() {
 								int idx = pos - enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->begin();
 								enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->at(idx) = fork_node;
 							}
+
+							fork_node->is_tagged = fork_node->JustCntrlPreds->at(0)->is_tagged;
+							fork_node->tagging_count++;
 					}
 				}
 				break;
@@ -1576,6 +1581,9 @@ void CircuitGenerator::extraCheck_AddBranchSuccs() {
 						int idx = pos - enode->true_branch_succs_Ctrl->at(j)->JustCntrlPreds->begin();
 						enode->true_branch_succs_Ctrl->at(j)->JustCntrlPreds->at(idx) = fork_node;
 					}
+
+					fork_node->is_tagged = fork_node->JustCntrlPreds->at(0)->is_tagged;
+					fork_node->tagging_count++;
 
 					switch(enode->false_branch_succs_Ctrl->size()) {
 						case 0:{
@@ -1609,6 +1617,9 @@ void CircuitGenerator::extraCheck_AddBranchSuccs() {
 								int idx = pos - enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->begin();
 								enode->false_branch_succs_Ctrl->at(j)->JustCntrlPreds->at(idx) = fork_node;
 							}
+
+							fork_node->is_tagged = fork_node->JustCntrlPreds->at(0)->is_tagged;
+							fork_node->tagging_count++;
 					}
 
 

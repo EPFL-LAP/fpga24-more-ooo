@@ -151,21 +151,21 @@ public:
 
 			circuitGen->FindLoopDetails(LI);
 
-			std::ofstream general_dbg_file;
-			general_dbg_file.open("general_MYCFG_dbg.txt");
+			// std::ofstream general_dbg_file;
+			// general_dbg_file.open("general_MYCFG_dbg.txt");
 
-			general_dbg_file << "\n HIIII before addMemoryInterfaces\n";
+			// general_dbg_file << "\n HIIII before addMemoryInterfaces\n";
 
 
 			// This function (implemented in Memory.cpp) takes care of all the memory stuff; mainly operates on the CntrlOrder network
 			// Aya: 12/09/2022 added an extra parameter to tell the function if we will interface with thr LSQ the conservative or the smart way!
 			circuitGen->addMemoryInterfaces(opt_useLSQ, is_smart_cntrlOrder_flag, lazy_fork_flag);
-			general_dbg_file << "\nAfter addMemoryInterfaces\n";
+			//general_dbg_file << "\nAfter addMemoryInterfaces\n";
 
 
 
 			/////////////////////////////////////////// TEMPORARILY FOR DEBUGGING!!!
-			std::ofstream dbg_file_15;
+			/*std::ofstream dbg_file_15;
     		dbg_file_15.open("check_CntrlOrderNetwork.txt");
 			for(auto& enode: *enode_dag) {
 				if(enode->CntrlOrderPreds->size() > 0) {
@@ -184,17 +184,18 @@ public:
 						dbg_file_15 << getNodeDotTypeNew(pred) << " in BB_NULL, ";
 				}
 				dbg_file_15 << "\n\n";
-			}
+			}*/
 			///////////////////////////////////////////////////////////////////////////////
 
 			/* Aya: 23/05/2022: Applying FPL's algorithm
 			 */
 					
-			circuitGen->printCDFG();
-			std::ofstream dbg_file_5;
-    		dbg_file_5.open("check_final_loops_details.txt");
-			circuitGen->debugLoopsOutputs(dbg_file_5);
-			dbg_file_5.close();
+			//circuitGen->printCDFG();
+
+			// std::ofstream dbg_file_5;
+    		// dbg_file_5.open("check_final_loops_details.txt");
+			// circuitGen->debugLoopsOutputs(dbg_file_5);
+			// dbg_file_5.close();
 
 			// AYA: 08/10/2022: added the following to trigger the return of void functions
 			circuitGen->connectReturnToVoid_irredundant();
@@ -217,20 +218,20 @@ public:
 			//circuitGen->TEMP_deleteExtraPhis(CircuitGenerator::constCntrl);
 			//circuitGen->TEMP_deleteExtraPhis(CircuitGenerator::memDeps);
 
-			general_dbg_file << "\nAfter the 3 calls of checkLoops!\n";
+			//general_dbg_file << "\nAfter the 3 calls of checkLoops!\n";
 
 			
 			//////// TEMPORARILY FOR DEBUGGING!!
-			std::ofstream dbg_file;
-    		dbg_file.open("PROD_CONS_BBs.txt");
+			// std::ofstream dbg_file;
+    		// dbg_file.open("PROD_CONS_BBs.txt");
 
-			for (auto& enode : *enode_dag) {
-				for (auto& succ : *enode->CntrlSuccs) {
-					dbg_file << "\n---------------------------------------------------\n";
-					if(enode->BB!=nullptr && succ->BB!=nullptr)
-						dbg_file << "Producer in BB" << aya_getNodeDotbbID(circuitGen->BBMap->at(enode->BB)) << " to a Consumer in BB " << aya_getNodeDotbbID(circuitGen->BBMap->at(succ->BB)) << "\n";
-				}
-			}
+			// for (auto& enode : *enode_dag) {
+			// 	for (auto& succ : *enode->CntrlSuccs) {
+			// 		dbg_file << "\n---------------------------------------------------\n";
+			// 		if(enode->BB!=nullptr && succ->BB!=nullptr)
+			// 			dbg_file << "Producer in BB" << aya_getNodeDotbbID(circuitGen->BBMap->at(enode->BB)) << " to a Consumer in BB " << aya_getNodeDotbbID(circuitGen->BBMap->at(succ->BB)) << "\n";
+			// 	}
+			// }
 			
 			circuitGen->removeExtraPhisWrapper(CircuitGenerator::data);
 			circuitGen->removeExtraPhisWrapper(CircuitGenerator::constCntrl);
@@ -238,7 +239,7 @@ public:
 				circuitGen->removeExtraPhisWrapper(CircuitGenerator::memDeps);
 			}
 			
-			general_dbg_file << "\nAfter the 3 calls of removeExtraPhisWrapper!\n";
+			//general_dbg_file << "\nAfter the 3 calls of removeExtraPhisWrapper!\n";
 
 
 			// AYA: 06/10/2021: added this to make sure the predecessors of any Phi we added above is compatible with the order of the LLVM convention to be able to convert them to muxes later!
@@ -294,19 +295,19 @@ public:
 			//circuitGen->addSourceForConstants();
 
 			//////// TEMPORARILY FOR DEBUGGING!!
-			std::ofstream dbg_file_8;
-    		dbg_file_8.open("check_Pred_succs_of_gsa_non_loop_mux.txt");
-    		for (auto& enode : *enode_dag) {
-    			if(enode->is_non_loop_gsa_mux) {
-					assert(enode->type == Phi_c);
-					dbg_file_8 << "\n\nFound 1 non_loop_gsa_mux with " << enode->CntrlOrderPreds->size() << " CntrlOrderPreds, " <<  enode->JustCntrlPreds->size() << " JustCntrlPreds, " << enode->CntrlOrderSuccs->size() << " CntrlOrderSuccs, "  << enode->JustCntrlSuccs->size() << " JustCntrlSuccs" << "\n";
-					if(enode->CntrlOrderSuccs->size() > 0) {
-						assert(enode->CntrlOrderSuccs->size() == 1);
-						dbg_file_8 << "\n\tThe enode->CntrlOrderSuccs->at(0) is of type " << enode->CntrlOrderSuccs->at(0)->type << "\n";
-					}
-				}
+			// std::ofstream dbg_file_8;
+    		// dbg_file_8.open("check_Pred_succs_of_gsa_non_loop_mux.txt");
+    		// for (auto& enode : *enode_dag) {
+    		// 	if(enode->is_non_loop_gsa_mux) {
+			// 		assert(enode->type == Phi_c);
+			// 		dbg_file_8 << "\n\nFound 1 non_loop_gsa_mux with " << enode->CntrlOrderPreds->size() << " CntrlOrderPreds, " <<  enode->JustCntrlPreds->size() << " JustCntrlPreds, " << enode->CntrlOrderSuccs->size() << " CntrlOrderSuccs, "  << enode->JustCntrlSuccs->size() << " JustCntrlSuccs" << "\n";
+			// 		if(enode->CntrlOrderSuccs->size() > 0) {
+			// 			assert(enode->CntrlOrderSuccs->size() == 1);
+			// 			dbg_file_8 << "\n\tThe enode->CntrlOrderSuccs->at(0) is of type " << enode->CntrlOrderSuccs->at(0)->type << "\n";
+			// 		}
+			// 	}
 
-			}
+			// }
 
 
 			// Aya: 13/09/2022: added the following function (implemented in Memory.cpp) to optimize the Bx components that are having no succs thus fed to a sink!!
@@ -316,25 +317,25 @@ public:
 			//general_dbg_file << "\nAfter removeUselessBxs!\n";
 
 
-	      	dbg_file_8 << "\nAfter calling removeUselessBxs!\n ";
-	      	for (auto& enode : *enode_dag) {
-    			if(enode->is_non_loop_gsa_mux) {
-					assert(enode->type == Phi_c);
-					dbg_file_8 << "\n\nFound 1 non_loop_gsa_mux with " << enode->CntrlOrderPreds->size() << " CntrlOrderPreds, " <<  enode->JustCntrlPreds->size() << " JustCntrlPreds, " << enode->CntrlOrderSuccs->size() << " CntrlOrderSuccs, "  << enode->JustCntrlSuccs->size() << " JustCntrlSuccs" << "\n";
-					if(enode->CntrlOrderSuccs->size() > 0) {
-						assert(enode->CntrlOrderSuccs->size() == 1);
-						dbg_file_8 << "\n\tThe enode->CntrlOrderSuccs->at(0) is of type " << enode->CntrlOrderSuccs->at(0)->type << "\n";
+	      	// dbg_file_8 << "\nAfter calling removeUselessBxs!\n ";
+	      	// for (auto& enode : *enode_dag) {
+    		// 	if(enode->is_non_loop_gsa_mux) {
+			// 		assert(enode->type == Phi_c);
+			// 		dbg_file_8 << "\n\nFound 1 non_loop_gsa_mux with " << enode->CntrlOrderPreds->size() << " CntrlOrderPreds, " <<  enode->JustCntrlPreds->size() << " JustCntrlPreds, " << enode->CntrlOrderSuccs->size() << " CntrlOrderSuccs, "  << enode->JustCntrlSuccs->size() << " JustCntrlSuccs" << "\n";
+			// 		if(enode->CntrlOrderSuccs->size() > 0) {
+			// 			assert(enode->CntrlOrderSuccs->size() == 1);
+			// 			dbg_file_8 << "\n\tThe enode->CntrlOrderSuccs->at(0) is of type " << enode->CntrlOrderSuccs->at(0)->type << "\n";
 
-						if(enode->CntrlOrderSuccs->at(0)->type == LSQ_) {
-							// search for the enode in the predecessors of the LSQ!!
-							auto pos_check = std::find(enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->begin(), enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->end(), enode);
-							assert(pos_check != enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->end());
-							dbg_file_8 << "\n\tThe index of the non_loop_gsa_mux in the CntrlOrderPreds of the LSQ is  " << pos_check - enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->begin() << "\n";
-						}
-					}
-				}
+			// 			if(enode->CntrlOrderSuccs->at(0)->type == LSQ_) {
+			// 				// search for the enode in the predecessors of the LSQ!!
+			// 				auto pos_check = std::find(enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->begin(), enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->end(), enode);
+			// 				assert(pos_check != enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->end());
+			// 				dbg_file_8 << "\n\tThe index of the non_loop_gsa_mux in the CntrlOrderPreds of the LSQ is  " << pos_check - enode->CntrlOrderSuccs->at(0)->CntrlOrderPreds->begin() << "\n";
+			// 			}
+			// 		}
+			// 	}
 
-			}
+			// }
 
 			// FOR THIS FLAG TO BE FALSE EFFECTIVELY, MAKE SURE 1) YOU ARE NOT RAISING THE TAG FLAG, 2) YOU HAVE ONLY 1 THREAD IN YOUR CODE
 			bool loopMux_flag = false;
@@ -353,11 +354,12 @@ public:
 			// AYA: 16/09/2023: the purpose of this function is to convert one of the Muxes of every loop into a CMerge and let its condition output serve as the select of all other MUxes of this loop
 			// TODO!! THEN, CHECK THAT YOU ACHIEVE THE BEST PERFORMANCE IN SIMULATION, THEN, TAGGER to limit the tokens in case we have more threards 
 				// Then, collect results for some benchmarks!!
-
-            bool loop_cmerge_flag = is_tag_from_input();
+            std::string tag_info_path;
+            get_tag_info_file_path(tag_info_path); 
+            bool loop_cmerge_flag = is_tag_from_input(tag_info_path);
 			bool ignore_outer_most_loop = true; //true;
 			if(loop_cmerge_flag) {
-				circuitGen->convert_loop_cmerge(ignore_outer_most_loop);  // implemented in newLoops_management.cpp: needs to tweak the condition of picking the master Mux based on the example
+				circuitGen->convert_loop_cmerge(tag_info_path, ignore_outer_most_loop);  // implemented in newLoops_management.cpp: needs to tweak the condition of picking the master Mux based on the example
 																		// currenly applies the logic of finding the master Cmerge for every loop in the circuit 
 			}
 			// MOved the following block to happen afterwards because I would like to include any potential circuitry that could be added below in the inputs/outputs of TAGGER/UNTAGGER
@@ -398,9 +400,9 @@ public:
             if(fix_init_inputs_flag)
 				circuitGen->fix_INIT_inputs();
 
-			bool if_else_cmerge_flag = false;//true;
+			bool if_else_cmerge_flag = loop_cmerge_flag;
 			if(if_else_cmerge_flag) {
-				circuitGen->convert_if_else_cmerge();
+				circuitGen->convert_if_else_cmerge(tag_info_path);
 			}
 			if(loop_cmerge_flag || if_else_cmerge_flag)
 				circuitGen->insert_tagger_untagger_wrapper(); // implemented in AddTags.cpp: 
@@ -415,7 +417,7 @@ public:
 				circuitGen->tag_cluster_nodes(); // implemented in AddTags.cpp: 
 
 				// AYA: 28/09/2023
-				circuitGen->addMissingAlignerInputs();  // this function (i) inserts the ALIGNER, (ii) identifies the DIRTY nodes, marks them and passes their clean inputs through the TAGGER/UNTAGGER
+				circuitGen->addMissingAlignerInputs(tag_info_path);  // this function (i) inserts the ALIGNER, (ii) identifies the DIRTY nodes, marks them and passes their clean inputs through the TAGGER/UNTAGGER
 			}
 
 			//general_dbg_file << "\nAfter addFork!\n";
@@ -512,7 +514,7 @@ public:
 				//circuitGen->insert_loop_exit_robs();
 			}
 
-			general_dbg_file.close();
+			// general_dbg_file.close();
 
 
 	// Aya: The following is meant for optimizing bit width

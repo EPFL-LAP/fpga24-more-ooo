@@ -2771,7 +2771,7 @@ begin
     join_write_temp:   entity work.join(arch) generic map(2)
             port map( pValidArray,  --pValidArray
                 nReadyArray(0),     --nready                    
-                      join_valid,         --valid          
+                join_valid,         --valid          
                 readyArray);   --readyarray 
 
     dataOutArray(0) <= one when (signed(dataInArray(0)) <= signed(dataInArray(1)) ) else zero;

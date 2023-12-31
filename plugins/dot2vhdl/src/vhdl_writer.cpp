@@ -159,7 +159,17 @@ ofstream netlist;
 ofstream tb_wrapper;
 
 
-void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
+int get_max_number_of_nested_taggers() {
+    int max = -2;
+    for (int i = 0; i < components_in_netlist; i++ ) {
+        if(nodes[i].taggers_num > max)
+            max = nodes[i].taggers_num;
+    }
+    return max;
+    //return 1;
+}
+
+void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging, int max_number_of_nested_taggers )
 {
     int indx;
     string signal;
@@ -229,6 +239,11 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                         // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                                     int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                                    // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                                    if(max_number_of_nested_taggers > 0) {
+                                        tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                        tag_bit_size--;
+                                    }
 
                                     signal += "std_logic_vector (" + to_string(tag_bit_size) + " downto 0);";
 
@@ -288,6 +303,12 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                         // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                                     int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                                    // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                                    if(max_number_of_nested_taggers > 0) {
+                                        tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                        tag_bit_size--;
+                                    }
+
 
                                     signal += "std_logic_vector (" + to_string(tag_bit_size) + " downto 0);";
 
@@ -338,6 +359,13 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                         // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                                         int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                                        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                                        if(max_number_of_nested_taggers > 0 && nodes[i].type != "Free_Tags_Fifo"
+                                            && !(nodes[i].type == "Tagger" && indx == 0)) { // AYA: 28/12/2023: added the extra condition to leave the number of bits of the free_tags_fifo corresponding to a single tagger bits even in the presence of nested tagging...
+                                                tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                                tag_bit_size--;
+                                            }  
+
                                         signal += to_string(tag_bit_size);
                                     } else {
                                         signal += to_string( ( nodes[i].inputs.input[indx].bit_size - 1 >= 0 ) ? nodes[i].inputs.input[indx].bit_size - 1 : DEFAULT_BITWIDTH-1 );
@@ -372,6 +400,13 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                     // AYA: 05/12/2023: changed the way of calculating the number of bits
                                         // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                                     int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
+
+                                    // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                                    if(max_number_of_nested_taggers > 0) {
+                                        tag_bit_size = (tag_bit_size +1) * max_number_of_nested_taggers;
+                                        tag_bit_size--;
+                                    }
+
 
                                     signal += "std_logic_vector (" + to_string(tag_bit_size) + " downto 0);";
 
@@ -411,6 +446,11 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                         int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                        if(max_number_of_nested_taggers > 0) {
+                            tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                            tag_bit_size--;
+                        }
 
                         signal += "std_logic_vector (" + to_string(tag_bit_size) + " downto 0);";
 
@@ -517,6 +557,11 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                 // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                             int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                            // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                            if(max_number_of_nested_taggers > 0 && nodes[i].type != "Free_Tags_Fifo" 
+                                    && !(nodes[i].type == "Un_Tagger" && indx == 0))  // AYA: 28/12/2023: added the extra condition to leave the number of bits of the free_tags_fifo corresponding to a single tagger bits even in the presence of nested tagging...)
+                                tag_bit_size = tag_bit_size * max_number_of_nested_taggers;
+
                             signal += to_string(tag_bit_size);
                         } else {
                             signal += to_string( ( nodes[i].outputs.output[indx].bit_size-1 >=0 ) ? nodes[i].outputs.output[indx].bit_size - 1 : DEFAULT_BITWIDTH-1);
@@ -557,6 +602,11 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                 // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                             int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                            // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                            if(max_number_of_nested_taggers > 0) {
+                                tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                tag_bit_size--;
+                            }
 
                             signal += to_string(tag_bit_size);
                             signal += " downto 0);";
@@ -592,6 +642,11 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                 // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                             int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                            // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                            if(max_number_of_nested_taggers > 0) {
+                                tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                tag_bit_size--;
+                            }
 
                             signal += to_string(tag_bit_size);
                             signal += " downto 0);";
@@ -626,6 +681,12 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                                 // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                             int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
 
+                            // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                            if(max_number_of_nested_taggers > 0) {
+                                tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                                tag_bit_size--;
+                            }
+
 
                             signal += to_string(tag_bit_size);
                             signal += " downto 0);";
@@ -655,6 +716,12 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                     // AYA: 05/12/2023: changed the way of calculating the number of bits
                         // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                     int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
+
+                    // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                    if(max_number_of_nested_taggers > 0) {
+                        tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                        tag_bit_size--;
+                    }
 
 
                     if(nodes[i].component_operator.find("mc_load_op")!= std::string::npos) {
@@ -794,6 +861,12 @@ void write_signals ( bool tagged_loop_mux_flag, bool tagger_is_tagging )
                 // AYA: 05/12/2023: changed the way of calculating the number of bits
                     // the number of bits needed to represent any integer x is floor(log2(x)) + 1
                 int tag_bit_size = floor(log2(std::stoi(N)));  // we do not need to add 1 because it is an idx
+
+                // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+                if(max_number_of_nested_taggers > 0) {
+                    tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+                    tag_bit_size--;
+                }
 
 
                 netlist << "\t" << SIGNAL_STRING << nodes[i].name << "_tag_order_data : std_logic_vector ("  << to_string(tag_bit_size) << " downto 0);" << endl;
@@ -2041,7 +2114,7 @@ int get_memory_inputs ( int node_id )
     return memory_inputs;
 }
 
-string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st_interfaces_flag_yes_extra_ST_output, bool tagged_loop_mux_flag )
+string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st_interfaces_flag_yes_extra_ST_output, bool tagged_loop_mux_flag, int max_number_of_nested_taggers )
 {
     string generic;
 
@@ -2077,7 +2150,15 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
+
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        if(max_number_of_nested_taggers > 0) {
+            tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+        } else {
+            tag_bit_size++;
+        }
+
 
         generic += to_string(tag_bit_size);
     }
@@ -2107,7 +2188,15 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
+
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        if(max_number_of_nested_taggers > 0) {
+            tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+        } else {
+            tag_bit_size++;
+
+        }
 
         generic += to_string(tag_bit_size);   // tag size if the condition size here
 
@@ -2138,7 +2227,16 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
+
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        if(max_number_of_nested_taggers > 0) {
+            tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+        } else {
+            tag_bit_size++;
+ 
+        }
+
 
         generic += to_string(tag_bit_size);   // tag size if the condition size here
     }
@@ -2265,10 +2363,30 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
+
+        int total_tag_bit_size;  // AYA: 28/12/2023
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        if(max_number_of_nested_taggers > 0) {
+            total_tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+        } else {
+            total_tag_bit_size = tag_bit_size;
+            total_tag_bit_size++;
+        }
+        tag_bit_size++;
+
+        generic += COMMA;
+        generic += to_string(total_tag_bit_size);
 
         generic += COMMA;
         generic += to_string(tag_bit_size);
+
+        // AYA: 27/12/2023
+        generic += COMMA;
+        if(max_number_of_nested_taggers > 0)   // take the offset only if there are nested taggers
+            generic += to_string(nodes[node_id].component_id);
+        else
+            generic += "0";
 
     }
 
@@ -2474,7 +2592,15 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
+
+        // AYA: 28/12/2023: commented this out because each individual free_tags_fifo should have only bits of one tagger!!
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        // if(max_number_of_nested_taggers > 0) {
+        //     tag_bit_size = tag_bit_size * max_number_of_nested_taggers;
+        // } 
+        tag_bit_size++;
+
 
         generic += to_string(tag_bit_size);
         generic += COMMA;
@@ -2482,7 +2608,7 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         generic += COMMA;
          // AYA: 05/12/2023: added 1 to N because the fifo_depth seems to be -1
-        generic += to_string(std::stoi(N) + 1);
+        generic += to_string(std::stoi(N) + 1);  // AYA: 27/12/2023: although we increased the number of bits, the depth should remain the same since a single TAGGER will still have the same total number of tags but multiple tags collectively require more bits to store their tags on the same signal..
     }
 
     if ( nodes[node_id].type.find("TEHB") != std::string::npos )
@@ -2565,6 +2691,12 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
         if(tagged_loop_mux_flag) {
             generic += COMMA;
             int tag_bit_size = ceil(log2(std::stoi(N)));
+
+            // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+            if(max_number_of_nested_taggers > 0)
+                tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+
+
             generic += to_string(tag_bit_size);
         }   
 
@@ -2732,8 +2864,16 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
 
         // AYA: 05/12/2023: changed the way of calculating the number of bits
             // the number of bits needed to represent any integer x is floor(log2(x)) + 1
-        int tag_bit_size = floor(log2(std::stoi(N))) + 1;  
+        int tag_bit_size = floor(log2(std::stoi(N)));// + 1;  
 
+        // AYA: 27/12/2023: to account for having many nested TAGGERs and a dedicated bits for each one
+        if(max_number_of_nested_taggers > 0) {
+            tag_bit_size = (tag_bit_size + 1) * max_number_of_nested_taggers;
+        } else {
+            tag_bit_size++;
+
+        }
+            
         generic += COMMA;
         generic += to_string(tag_bit_size); //  AYA: 03/04/2023: for now hardcoding the pragma that controls the number of threads running concurrently 
     }
@@ -2743,7 +2883,7 @@ string get_generic ( int node_id, bool fix_mc_st_interfaces_flag, bool fix_mc_st
     return generic;
 }
 
-void write_components (bool tagged_loop_mux_flag, bool tagger_is_tagging )
+void write_components (bool tagged_loop_mux_flag, bool tagger_is_tagging, int max_number_of_nested_taggers )
 {
     string entity="";
     string generic="";
@@ -2826,7 +2966,7 @@ void write_components (bool tagged_loop_mux_flag, bool tagger_is_tagging )
             generic = " generic map (";
             
             //generic += get_generic ( nodes[i].node_id );
-            generic += get_generic ( i, fix_mc_st_interfaces_flag, fix_mc_st_interfaces_flag_yes_extra_ST_output, tagged_loop_mux_flag );
+            generic += get_generic ( i, fix_mc_st_interfaces_flag, fix_mc_st_interfaces_flag_yes_extra_ST_output, tagged_loop_mux_flag, max_number_of_nested_taggers );
             
             generic += ")";
             
@@ -4901,7 +5041,7 @@ int get_end_bitsize( void )
     return bitsize;
 }
 
-void write_entity ( string  filename, int indx )
+void write_entity ( string  filename, int indx, int max_number_of_nested_taggers )
 {
     
     string entity = clean_entity ( filename );
@@ -5190,17 +5330,20 @@ void vhdl_writer::write_vhdl ( string filename, int indx )
 
     
     netlist.open (output_filename);
+
+    // AYA: 26/12/2023
+    int max_number_of_nested_taggers = get_max_number_of_nested_taggers();
     
     write_intro ( );
     
-    write_entity ( filename, indx );
+    write_entity ( filename, indx, max_number_of_nested_taggers );
     
     netlist << "architecture behavioral of " << entity << " is " << endl;
 
     bool tagged_loop_mux_flag = false;  // Aya: 03/08/2023: towards adding an option to support a LoopMux producing tag
     bool tagger_is_tagging = true;  // AYa: 18/09/2023
 
-    write_signals ( tagged_loop_mux_flag, tagger_is_tagging );
+    write_signals ( tagged_loop_mux_flag, tagger_is_tagging, max_number_of_nested_taggers );
     
     write_lsq_declaration ( );
 
@@ -5208,7 +5351,7 @@ void vhdl_writer::write_vhdl ( string filename, int indx )
 
     write_connections ( indx, tagged_loop_mux_flag, tagger_is_tagging );
     
-    write_components ( tagged_loop_mux_flag, tagger_is_tagging);
+    write_components ( tagged_loop_mux_flag, tagger_is_tagging, max_number_of_nested_taggers);
 
     netlist  << endl << "end behavioral; "<< endl;
 

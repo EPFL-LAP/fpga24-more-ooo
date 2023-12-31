@@ -154,6 +154,10 @@ blockID DFnetlist_Impl::createBlock(BlockType type, const string& name)
     // AYA: 05/08/2023
     B.is_tagged = false;
 
+    // AYA: 26/12/2023
+    B.taggers_num = 0;
+    B.tagger_id = -1;
+
     return idx;
 }
 
@@ -297,6 +301,33 @@ void DFnetlist_Impl::setBlockTagged(blockID id, bool is_tagged)
 {
     assert(validBlock(id));
     blocks[id].is_tagged = is_tagged;
+}
+
+// AYA: 26/12/2023
+void DFnetlist_Impl::setBlockTaggerId(blockID id, int tagger_id)
+{
+    assert(validBlock(id));
+    blocks[id].tagger_id = tagger_id;
+}
+
+// AYA: 26/12/2023
+void DFnetlist_Impl::setBlockTaggersNum(blockID id, int taggers_num)
+{
+    assert(validBlock(id));
+    blocks[id].taggers_num = taggers_num;
+}
+
+// AYA: 26/12/2023
+int DFnetlist_Impl::getBlockTaggerId(blockID id)
+{
+   return blocks[id].tagger_id;
+}
+
+// AYA: 26/12/2023
+int DFnetlist_Impl::getBlockTaggersNum(blockID id)
+{
+    
+    return blocks[id].taggers_num;
 }
 
 // AYA: 05/08/2023

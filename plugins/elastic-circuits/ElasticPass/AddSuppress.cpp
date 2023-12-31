@@ -6,6 +6,10 @@
 #include<iterator>
 #include<algorithm>
 
+// AYA: 22/12/2023: added the following function to delete the files that were printed for debugging..
+void deleteFile_add_supp(const std::string& filename) { remove(filename.c_str());}
+
+
 /**
  * @brief 
  * @param 
@@ -323,6 +327,10 @@ void CircuitGenerator::identifyBBsForwardControlDependency() {
 
 		}
 	}
+
+	// AYA: 22/12/2023: deleting the files that were printed for debugging
+	deleteFile_add_supp("bbs_control_deps.txt");
+	deleteFile_add_supp("bbs_control_deps_verbose.txt");
 	
 }
 
@@ -1377,6 +1385,35 @@ void CircuitGenerator::addSuppress_with_loops(networkType network_flag) {
 			}
 		}
 	} 
+
+	// AYA: 22/12/2023: in the end remove all files that were printed for debugging
+	switch(network_flag) {
+    	case data:
+			deleteFile_add_supp("newest_check_loop_branches.txt");
+			deleteFile_add_supp("check_eliminate_common_ancestors.txt");
+			deleteFile_add_supp("check_boolean_f_prod_f_cons_data.txt");
+			deleteFile_add_supp("check_virtualBBs_deps_data.txt");
+			deleteFile_add_supp("check_final_f_prod_f_cons_data.txt");
+			deleteFile_add_supp("check_Shannon's_on_Suppress_conds_data.txt");
+			deleteFile_add_supp("check_calculate_f_supp_data.txt");
+    		break;
+		case constCntrl:
+			deleteFile_add_supp("check_boolean_f_prod_f_cons_constants.txt");
+			deleteFile_add_supp("check_virtualBBs_deps._constants.txt");
+			deleteFile_add_supp("check_final_f_prod_f_cons_constants.txt");
+			deleteFile_add_supp("check_Shannon's_on_Suppress_conds_constants.txt");
+			deleteFile_add_supp("check_calculate_f_supp_constants.txt");
+			break;
+
+		case memDeps:
+			deleteFile_add_supp("check_boolean_f_prod_f_cons_LSQ_mem.txt");
+			deleteFile_add_supp("check_virtualBBs_deps_LSQ_mem.txt");
+			deleteFile_add_supp("check_final_f_prod_f_cons_LSQ_mem.txt");
+			deleteFile_add_supp("check_Shannon's_on_Suppress_conds_LSQ_mem.txt");
+			deleteFile_add_supp("check_calculate_f_supp_LSQ_mem.txt");
+	}
+
+	deleteFile_add_supp("check_MUX_SEL_predicate.txt");
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /**

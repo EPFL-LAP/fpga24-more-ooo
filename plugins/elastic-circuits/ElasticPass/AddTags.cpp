@@ -6,9 +6,24 @@
 
 //const int N =1;//18;   // the number of tags, hardcoding it for now and need to change it for every example
 						// it is needed to define the number of succs and preds of the aligner_branch and aligner_mux 
+void delete_File(const std::string& filename) {
+    remove(filename.c_str());
+}
 
-bool is_tag_from_input() {
-	std::string filename = TAG_INFO_PATH;
+void get_tag_info_file_path(std::string& tag_info_path) {
+	std::string filename = PATH_TO_TAG_INFO_PATH;
+	std::ifstream file(filename, std::ifstream::in);
+
+	if (!file) {
+	    cerr << "Error opening " << filename << " use default file in the following location: /home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt" << endl;
+	    //tag_info_path = "/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt";
+	}
+
+	getline (file, tag_info_path);
+}
+
+bool is_tag_from_input(const std::string& tag_info_path) {
+	std::string filename = tag_info_path;
 	std::ifstream file(filename, std::ifstream::in);
 
 	if (!file) {
@@ -29,8 +44,8 @@ bool is_tag_from_input() {
 }
 
 
-int number_of_tags_from_input() {
-	std::string filename = TAG_INFO_PATH;
+int number_of_tags_from_input(const std::string& tag_info_path) {
+	std::string filename = tag_info_path;
 	std::ifstream file(filename, std::ifstream::in);
 
 	if (!file) {
@@ -75,7 +90,7 @@ void CircuitGenerator::connect_Aligner_Branch_Mux(networkType network_flag, ENod
 
 // AYA: 30/09/2023: building the ALIGNER circuitry
 // THis function should be called after addFork because it takes care of adding the forks it needs internally
-void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>* other_inputs, ENode* un_tagger) {
+void CircuitGenerator::build_Aligner(const std::string& tag_info_path, ENode* reference_input, std::vector<ENode*>* other_inputs, ENode* un_tagger, ENode* tagger) {
 	// It is important to note that both reference_input and other_inputs are currently directly predecessors of the UN_TAGGER
 		// because so far we do not have an ALIGNER component
 	// The goal of this function to to add some elastic components between the given inputs and the UN_TAGGER to do the ALIGNER's job
@@ -96,7 +111,7 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 	}*/
 
 	// AYa: 09/12/2023:
-	int number_of_tags = number_of_tags_from_input();
+	int number_of_tags = number_of_tags_from_input(tag_info_path);
 
 	/////////////////////////
 
@@ -111,6 +126,7 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 	reference_fork->CntrlSuccs->push_back(reference_input->CntrlSuccs->at(0));
 
 	reference_fork->is_tagged = true;
+	reference_fork->tagging_count++;
 
 	// search for the reference input in the pred of its succ (which is the UN_TAGGER)
 	auto pos = std::find(reference_input->CntrlSuccs->at(0)->CntrlPreds->begin(), reference_input->CntrlSuccs->at(0)->CntrlPreds->end(), reference_input);
@@ -128,13 +144,16 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 		enode_dag->push_back(aligner_branch);
 
 		//aligner_branch->is_tagged = true;
-
+		// AYA: 26/12/2023
+		aligner_branch->tagger_id = tagger->id;
 
 		ENode* aligner_mux = new ENode(Aligner_Mux, "aligner_mux", un_tagger->BB); //other_inputs->at(i)->BB); 06/10/2023: replaced the BB with that of the UNTAGGER
 		aligner_mux->id = aligner_mux_id++;
 		enode_dag->push_back(aligner_mux);
 
 		//aligner_mux->is_tagged = true;
+		// AYA: 26/12/2023
+		aligner_mux->tagger_id = tagger->id;
 
 		// connect the conditions of the aligner_branch and the aligner_mux following the convention of the usual Mux and Branch
 			// the Branch condition comes after its data if the data is in the CntrlSuccs, so we do it in the bottom after connecting the data inputs
@@ -147,6 +166,8 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 		enode_dag->push_back(aligner_branch_fork);
 
 		aligner_branch_fork->is_tagged = true;
+		aligner_branch_fork->tagging_count++;
+		aligner_branch_fork->tagger_id = tagger->id;
 
 		// the Branch should be the succ of other_inputs->at(i) and the Mux should be the succ of the Branch and the UN_TAGGER should be the succ of the Mux
 		if(other_inputs->at(i)->CntrlSuccs->size() > 0) {
@@ -236,14 +257,6 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 		aligner_branch_fork->CntrlSuccs->push_back(aligner_branch);
 	}
 
-
-	// SUMMARY OF THE PROBLEMS!
-	/*
-		(1) IN the vhdl_writer, we should know which connections are data+tag and which are tag only
-			This can be solved if in the vdhl_writer, we blindly set the condition of the Aligner_Branch and Aligner_Mux to take tags
-		(2) IN the vhdl_writer and everywhere else, figure out how to manage Branches that have many outputs and Muxes that have many inputs.. 
-			// Map the new Branch and Mux to new modules..
-	*/
 }
 
 // AYA: 28/09/2023
@@ -251,7 +264,9 @@ void CircuitGenerator::build_Aligner(ENode* reference_input, std::vector<ENode*>
 	// to make sure to crrectly pass to the TAGGER/UNTAGGER (and potentially the ALIGNER/ROB) the edges to be ALIGNED
 		// because the other functions only manage clustering not identifying DIRTY edges, etc..
 	// Call this function in the end even after calling the insertTagger_UNTAGGER and addForks
-void CircuitGenerator::addMissingAlignerInputs() {
+
+// IMP TO NOTE: in clustering the loop clusters, for now I assume that only one of the Branches of the loop carry values outside the loop
+void CircuitGenerator::addMissingAlignerInputs(const std::string& tag_info_path) {
 
 	// 2nd: FOR NOW I just TAG inputs of the direct successor of the is_if_else_cmerge and then untag it immediately
 		// Then, I will manually position the ALIGNER between the TAGGER and UNTAGGER of this edge!!
@@ -265,17 +280,20 @@ void CircuitGenerator::addMissingAlignerInputs() {
 			ENode* tagger = nullptr;
 			ENode* un_tagger = nullptr;
 			for(auto& e:*enode_dag) {
-				if(e->type == Tagger) {
+				/*if(e->type == Tagger) {
 					if(BBMap->at(e->BB)->loop->contains(enode->BB))
 						tagger = e;
 				}
 				if(e->type == Un_Tagger){
 					if(BBMap->at(e->BB)->loop->contains(enode->BB))
 						un_tagger = e;
-				}
+				}*/
+				// AYA: 26/12/2023: replaced the above code with directly accessing the stored tagger/untagger to avoid mistakes in the presence of multiple taggers/untaggers in the circuit
+				assert(enode->tagger != nullptr && enode->un_tagger != nullptr);
+				tagger = enode->tagger;
+			    un_tagger = enode->un_tagger;
 			}
 			assert(tagger!=nullptr && un_tagger!=nullptr);
-
 
 			if(enode->is_if_else_cmerge) {
 				cluster_exit = enode;
@@ -341,17 +359,13 @@ void CircuitGenerator::addMissingAlignerInputs() {
 			// we are interested in the succ of the untagger at idx_in_untagger_preds + 1 because the very 1st succ of the untagger is preserved for the fifo of free tags
 			dirty_node = un_tagger->CntrlSuccs->at(idx_in_untagger_preds + 1);
 
-			// AYA: temporary: 05/10/2023
-			/*if(!dirty_node->isLoadOrStore())
-				continue;   // skip TEMPORARILY!!!!!*/
-
 			dirty_node->is_dirty_node = true;
 
 			// TEMPRARILY MAKE THE DIRTY_NODE TAGGED.. it is temporary because I will eventualy insert an UNTAGGER that will undo the TAGGER's effect
 			//dirty_node->is_tagged = true;
 
 			// insert the tagger between enode->CntrlSuccs->at(0) and the predecessor that is different from the enode (i.e., master) if any
-			// FOR NOW I am only supporting components that have two preds where one of them is the master enode
+			// FOR NOW I am only supporting components (i.e., real circuit units not steering units) that have two preds where one of them is the master enode
 			assert(dirty_node->CntrlPreds->size() == 2);
 			if(dirty_node->CntrlPreds->at(0) == un_tagger) { // through the if_else_cmerge node
 				// then insert the .at(1) pred of the dirty node in the pred of the tagger
@@ -418,7 +432,7 @@ void CircuitGenerator::addMissingAlignerInputs() {
 					continue;
 				other_inputs->push_back(un_tagger->CntrlOrderPreds->at(i));
 			}
-			build_Aligner(reference_input, other_inputs, un_tagger);
+			build_Aligner(tag_info_path, reference_input, other_inputs, un_tagger, tagger);
 						
 		}
 
@@ -436,13 +450,19 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        	if(enode_2->BB == nullptr || enode_2->type == Tagger || enode_2->type == Un_Tagger || enode_2->type == Free_Tags_Fifo)  // skip tagger nodes because we do not tag them!
 	        		continue;
 	        	if(/*(enode_2->type == Fork_ || enode_2->type == Fork_c) &&*/ BBMap->at(enode_2->BB)->loop == BBMap->at(enode->BB)->loop ) {
-	        		enode_2->is_tagged = true;
+	        		//if(!enode_2->is_tagged) {
+	        			enode_2->is_tagged = true;
+	        			enode_2->tagging_count++;
+	        		//}
 	        	}
 
 	        	// 12/10/2023: supporting the case of a fork fed by the loop exit Branch and feeding the un_tagger
-	        	if(enode_2->CntrlSuccs->size() > 0) {
+	        	else if(enode_2->CntrlSuccs->size() > 0) {   // AYA: 29/1/2023: made it an else if to avoid counting some components twice 
 	        		if(enode_2->CntrlSuccs->at(0)->type == Un_Tagger) {
-		        		enode_2->is_tagged = true;
+	        			//if(!enode_2->is_tagged) {
+	        				enode_2->is_tagged = true;
+		        			enode_2->tagging_count++;
+	        			//}
 	        		}
 	        	}
 	        }
@@ -459,7 +479,10 @@ void CircuitGenerator::tag_cluster_nodes() {
 				if((enode_3->type == Branch_n || enode_3->type == Branch_c) && enode_3->old_cond_of_if_else_branch != nullptr) {
 					if(enode_3->old_cond_of_if_else_branch == enode->old_cond_of_if_else_merge) {
 						if_else_branches.push_back(enode_3);
-						enode_3->is_tagged = true;
+						//if(!enode_3->is_tagged) {
+							enode_3->is_tagged = true;
+							enode_3->tagging_count++;
+						//}
 					}
 				}
 					
@@ -476,7 +499,11 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        				&& BBMap->at(enode_2->BB)->Idx > BBMap->at(if_else_branches.at(0)->BB)->Idx) 
 	        				&& enode_2->BB != enode->BB)
 	        		) {
-	        		enode_2->is_tagged = true;
+	        		//if(!enode_2->is_tagged) {
+        				enode_2->is_tagged = true;
+	        			enode_2->tagging_count++;
+	        		//}
+	        		
 	        	}
 
 	        	// AYA: 03/10/2023: tag also the succs of the if_else_branches that are in the same BB as the branhc (i.e., most likley forks!!)
@@ -507,10 +534,9 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        		}
 	        	}*/
 
-	        }
-
-	        
+	        }  
 	        enode->is_tagged = true;
+	        enode->tagging_count++;
 		}
 
     }
@@ -532,7 +558,7 @@ void CircuitGenerator::insert_tagger_untagger_wrapper() {
         if(enode->is_data_loop_cmerge) {
             insert_tagger_untagger_loop_node(enode);
         } 
-    	
+
     	if(enode->is_if_else_cmerge) {
     		insert_tagger_untagger_if_else_node(enode);
     	}
@@ -542,6 +568,9 @@ void CircuitGenerator::insert_tagger_untagger_wrapper() {
 
 // AYA: 27/09/2023
 void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master_cmerge) {
+	std::ofstream dbg_file;
+	dbg_file.open("debug_if_else_branches_tagger_insertion.txt");
+
 	// takes the master Mux (that is now of type CMerge) of a particular if-else since the TAGGER/UNTAGGER should be inserted in a specific if-then-else
 	
 	// insert the TAGGER at all data input edges of any Branch having the same condition as the if_else_master_cmerge
@@ -563,15 +592,17 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 	new_tagger->id = tagger_id++;
 	enode_dag->push_back(new_tagger);
 
-	//new_tagger->BB 
-
-	// 14/10/2023: identifying the loop exit BB
-	BasicBlock* un_tagger_bb;
+	// 14/10/2023: identifying the loop exit BB: AYA: 25/12/2023: see below: replaced the commented out code
+	/*BasicBlock* un_tagger_bb;
 	for(int kk = 0; kk < bbnode_dag->size(); kk++) {
 		if(bbnode_dag->at(kk)->is_loop_exiting ||
 			 bbnode_dag->at(kk)->is_loop_latch)
-			un_tagger_bb = bbnode_dag->at(kk)->BB;
-	}
+			un_tagger_bb = bbnode_dag->at(kk)->BB;     
+	}*/
+	// AYA: 25/12/2023: changed the above code to put the untagger in the BB that is the succ of the if_else_master_cmerge
+	BasicBlock* un_tagger_bb;
+	assert(if_else_master_cmerge->cmerge_data_succs->size() > 0);
+	un_tagger_bb = if_else_master_cmerge->cmerge_data_succs->at(0)->BB;
 
 	ENode* new_un_tagger = new ENode(Un_Tagger, "un_tagger", un_tagger_bb);//if_else_branches.at(0)->BB);
 	new_un_tagger->id = un_tagger_id++;
@@ -580,6 +611,10 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 	ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", un_tagger_bb);// if_else_branches.at(0)->BB);
 	new_free_tags_fifo->id = free_tags_fifo_id++;
 	enode_dag->push_back(new_free_tags_fifo);
+
+	// AYA: 26/12/2023: store the tagger and the un_tagger inside the loop_master_cmerger
+	if_else_master_cmerge->tagger = new_tagger;
+	if_else_master_cmerge->un_tagger = new_un_tagger;
 
 	// connect the tagger and untagger to the fifo of free tags
 	new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
@@ -592,18 +627,39 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 	for(int i = 0; i < if_else_branches.size(); i++) {
 
 		if(if_else_branches.at(i)->type == Branch_n) {
+			dbg_file << getNodeDotTypeNew(if_else_branches.at(i)) << if_else_branches.at(i)->id << ":\n";
+		
 			new_tagger->CntrlSuccs->push_back(if_else_branches.at(i));
 
-			new_tagger->CntrlPreds->push_back(if_else_branches.at(i)->CntrlPreds->at(0));
+			new_tagger->CntrlPreds->push_back(if_else_branches.at(i)->CntrlPreds->at(0)); 
 			// replace the branch from the succ of its data pred with the TAGGER
-			auto pos = std::find(if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->begin(), if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->end(), if_else_branches.at(i)); 
-			assert(pos != if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->end());
-			int idx = pos - if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->begin();
+			if(if_else_branches.at(i)->CntrlPreds->at(0)->is_data_loop_cmerge) {
+				auto pos = std::find(if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->begin(), if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->end(), if_else_branches.at(i)); 
+				if(pos == if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->end()) {
+					dbg_file << "The Branch is NOT present in the succs of its CMERGE preds called " << getNodeDotTypeNew(if_else_branches.at(i)->CntrlPreds->at(0)) << "\n";
+				} else {
+					dbg_file << "The Branch is present in the succs of its CMERGE preds called " << getNodeDotTypeNew(if_else_branches.at(i)->CntrlPreds->at(0)) << "\n";
+				}
 
-			if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->at(idx) = new_tagger;
+				assert(pos != if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->end());
+				int idx = pos - if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->begin();
+				if_else_branches.at(i)->CntrlPreds->at(0)->cmerge_data_succs->at(idx) = new_tagger;
+			} else {
+				auto pos = std::find(if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->begin(), if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->end(), if_else_branches.at(i)); 
+				if(pos == if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->end()) {
+					dbg_file << "The Branch is NOT present in the succs of its preds called " << getNodeDotTypeNew(if_else_branches.at(i)->CntrlPreds->at(0)) << "\n";
+				} else {
+					dbg_file << "The Branch is present in the succs of its preds called " << getNodeDotTypeNew(if_else_branches.at(i)->CntrlPreds->at(0)) << "\n";
+				}
 
+				assert(pos != if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->end());
+				int idx = pos - if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->begin();
+				if_else_branches.at(i)->CntrlPreds->at(0)->CntrlSuccs->at(idx) = new_tagger;
+			}
+	
 			if_else_branches.at(i)->CntrlPreds->at(0) = new_tagger;
 
+			// THE REST OF THE CODE IN THIS CONDITION WAS ORIGINALLY COMMENTED OUT
 			// do the same to tag the condition of the Branch
 			/*new_tagger->CntrlSuccs->push_back(if_else_branches.at(i));
 			new_tagger->CntrlPreds->push_back(if_else_branches.at(i)->CntrlPreds->at(1));
@@ -623,12 +679,19 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 				new_tagger->JustCntrlSuccs->push_back(if_else_branches.at(i));
 
 				new_tagger->JustCntrlPreds->push_back(if_else_branches.at(i)->JustCntrlPreds->at(0));
-				// replace the branch from the succ of its data pred with the TAGGER
-				auto pos = std::find(if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->begin(), if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->end(), if_else_branches.at(i)); 
-				assert(pos != if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->end());
-				int idx = pos - if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->begin();
 
-				if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->at(idx) = new_tagger;
+				// replace the branch from the succ of its data pred with the TAGGER
+				if(if_else_branches.at(i)->JustCntrlPreds->at(0)->is_data_loop_cmerge) {
+					auto pos = std::find(if_else_branches.at(i)->JustCntrlPreds->at(0)->cmerge_data_succs->begin(), if_else_branches.at(i)->JustCntrlPreds->at(0)->cmerge_data_succs->end(), if_else_branches.at(i)); 
+					assert(pos != if_else_branches.at(i)->JustCntrlPreds->at(0)->cmerge_data_succs->end());
+					int idx = pos - if_else_branches.at(i)->JustCntrlPreds->at(0)->cmerge_data_succs->begin();
+					if_else_branches.at(i)->JustCntrlPreds->at(0)->cmerge_data_succs->at(idx) = new_tagger;
+				} else {
+					auto pos = std::find(if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->begin(), if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->end(), if_else_branches.at(i)); 
+					assert(pos != if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->end());
+					int idx = pos - if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->begin();
+					if_else_branches.at(i)->JustCntrlPreds->at(0)->JustCntrlSuccs->at(idx) = new_tagger;
+				}
 
 				if_else_branches.at(i)->JustCntrlPreds->at(0) = new_tagger;
 
@@ -637,16 +700,23 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 				new_tagger->CntrlOrderSuccs->push_back(if_else_branches.at(i));
 
 				new_tagger->CntrlOrderPreds->push_back(if_else_branches.at(i)->CntrlOrderPreds->at(0));
-				// replace the branch from the succ of its data pred with the TAGGER
-				auto pos = std::find(if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->begin(), if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->end(), if_else_branches.at(i)); 
-				assert(pos != if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->end());
-				int idx = pos - if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->begin();
-
-				if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->at(idx) = new_tagger;
+				// replace the branch from the succ of its data pred with the 
+				if(if_else_branches.at(i)->CntrlOrderPreds->at(0)->is_data_loop_cmerge) {
+					auto pos = std::find(if_else_branches.at(i)->CntrlOrderPreds->at(0)->cmerge_data_succs->begin(), if_else_branches.at(i)->CntrlOrderPreds->at(0)->cmerge_data_succs->end(), if_else_branches.at(i)); 
+					assert(pos != if_else_branches.at(i)->CntrlOrderPreds->at(0)->cmerge_data_succs->end());
+					int idx = pos - if_else_branches.at(i)->CntrlOrderPreds->at(0)->cmerge_data_succs->begin();
+					if_else_branches.at(i)->CntrlOrderPreds->at(0)->cmerge_data_succs->at(idx) = new_tagger;
+				} else {
+					auto pos = std::find(if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->begin(), if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->end(), if_else_branches.at(i)); 
+					assert(pos != if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->end());
+					int idx = pos - if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->begin();
+					if_else_branches.at(i)->CntrlOrderPreds->at(0)->CntrlOrderSuccs->at(idx) = new_tagger;
+				}
 
 				if_else_branches.at(i)->CntrlOrderPreds->at(0) = new_tagger;
 			}
 
+			// THE REST OF THE CODE IN THIS CONDITION WAS ORIGINALLY COMMENTED OUT
 			// do the same to tag the condition of the Branch which is here in the CntrlPreds->at(0)
 			/*new_tagger->CntrlSuccs->push_back(if_else_branches.at(i));
 			new_tagger->CntrlPreds->push_back(if_else_branches.at(i)->CntrlPreds->at(0));
@@ -677,7 +747,9 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 		if_else_master_cmerge->cmerge_data_succs->at(i)->CntrlPreds->at(idx) = new_un_tagger;
 
 		if_else_master_cmerge->cmerge_data_succs->at(i) = new_un_tagger;
-	}
+	} 
+
+	delete_File("debug_if_else_branches_tagger_insertion.txt");
 
 }
 
@@ -751,10 +823,17 @@ void CircuitGenerator::insert_tagger_untagger_loop_node(ENode* loop_master_cmerg
 	new_un_tagger->id = un_tagger_id++;
 	enode_dag->push_back(new_un_tagger);
 
-		// let's make the free fifo tag in the same BB as that of the tagger
+	// AYA: 26/12/2023:
+	new_un_tagger->tagger_id = new_tagger->id;
+
+	// let's make the free fifo tag in the same BB as that of the tagger
 	ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", new_un_tagger->BB);
 	new_free_tags_fifo->id = free_tags_fifo_id++;
 	enode_dag->push_back(new_free_tags_fifo);
+
+	// AYA: 26/12/2023: store the tagger and the un_tagger inside the loop_master_cmerger
+	loop_master_cmerge->tagger = new_tagger;
+	loop_master_cmerge->un_tagger = new_un_tagger;
 
 	// temporarily: the in0 of the tagger will be fed from a constant, but later, it should be fed from the tagger!!
 	/*std::string cst_name = std::to_string(3);

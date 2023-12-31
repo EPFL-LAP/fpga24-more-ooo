@@ -602,6 +602,8 @@ architecture arch of mc_load_op_tagged is
 
     signal Buffer_2_tagOutArray_0 : std_logic_vector(TAG_SIZE-1 downto 0); -- 03/10/2023
 
+    signal temp_tag : std_logic_vector(TAG_SIZE-1 downto 0); --AYA: 24/12/23
+
     signal addr_from_circuit: std_logic_vector(ADDRESS_SIZE-1 downto 0);
 
     signal tag_from_circuit: std_logic_vector(TAG_SIZE-1 downto 0);  -- 08/08/2023
@@ -624,17 +626,6 @@ architecture arch of mc_load_op_tagged is
 begin
 
     addr_from_circuit <= input_addr;
-
-    -- AYA: 03/10/2023: attempt to correctly tag loads
-    --process(clk, rst) is
-    --begin
-    --   if (rst = '1') then
-    --        tag_from_circuit <= (others => '0');
-    --    elsif (rising_edge(clk)) then
-    --        tag_from_circuit <= tagInArray(0);             
-        
-    --    end if;
-    --end process;
 
     tag_from_circuit <= tagInArray(0);  -- AYA: 04/10/2023
     
@@ -671,6 +662,18 @@ begin
     data_from_lsq_valid <= pValidArray(0);
     data_from_lsq_ready <= Buffer_2_readyArray_0;
 
+    ---- AYA: 24/12/2023: adding one extra cycle to account for the latency of the MC
+    -- AYA: 03/10/2023: attempt to correctly tag loads
+    process(clk, rst) is
+    begin
+       if (rst = '1') then
+            temp_tag <= (others => '0');
+        elsif (rising_edge(clk)) then
+            temp_tag <= Buffer_1_tagOutArray_0;
+        end if;
+    end process;        
+    -------------------------------------
+
     dataOutArray(0) <= Buffer_2_dataOutArray_0; -- data from LSQ to load output
     validArray(0) <=  Buffer_2_validArray_0;
 
@@ -681,7 +684,7 @@ begin
         clk => clk,
         rst => rst,
         dataInArray(0) => data_from_lsq,
-        tagInArray(0) => Buffer_1_tagOutArray_0,--tag_from_circuit, -- 03/10/2023   -- 04/10/2023: moved back to take from buffer_1
+        tagInArray(0) => temp_tag,--tag_from_circuit, -- 03/10/2023   -- 04/10/2023: moved back to take from buffer_1
         pValidArray(0) => data_from_lsq_valid,
         readyArray(0) => Buffer_2_readyArray_0,
         nReadyArray(0) => nReadyArray(0),
@@ -1050,8 +1053,6 @@ architecture arch of mc_store_op is
 
 
  end architecture;
-
-
 
  ----------------------------------------------------------------------------------------------------------------------------------
 

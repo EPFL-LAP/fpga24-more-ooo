@@ -52,8 +52,27 @@ using namespace std;
  * are only needed to guarantee elasticity (but not short paths) can be transparent.
  *
 */
+#define PATH_TO_TAG_INFO_PATH "/home/dynamatic/Dynamatic/etc/dynamatic/path_to_tagging_info.txt"
 
-#define TAG_INFO_PATH   "/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt"
+std::string get_tag_info_file_path() {
+    std::string filename = PATH_TO_TAG_INFO_PATH;
+    std::ifstream file(filename, std::ifstream::in);
+
+    std::string tag_info_path;
+
+    if (!file) {
+        cerr << "Error opening " << filename << " use default file in the following location: /home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt" << endl;
+        tag_info_path = "/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt";
+    }
+
+    getline (file, tag_info_path);
+
+    return tag_info_path;
+}
+
+std::string TAG_INFO_PATH = get_tag_info_file_path();
+//#define TAG_INFO_PATH   "/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt"
+
 
 
 bool is_tag_from_input() {
@@ -1857,6 +1876,10 @@ blockID DFnetlist_Impl::insertBuffer(channelID c, int slots, bool transparent)
         is_tagged = false;
     /////////////////////////////////////////
 
+    // AYA: 26/12/2023
+    // the buffer should take the same tagger_id and taggers_num as its producer
+    int tagger_id = getBlockTaggerId(b_src); 
+    int taggers_num = getBlockTaggersNum(b_src);
 
 
     removeChannel(c);
@@ -1881,6 +1904,9 @@ blockID DFnetlist_Impl::insertBuffer(channelID c, int slots, bool transparent)
     // AYA: 05/08/2023
     setBlockTagged(eb, is_tagged);  // the buffer should be tagged if its SOurce block is tagged or if it is a LoopMux
 
+    // AYA: 26/12/2023
+    setBlockTaggerId(eb, tagger_id);
+    setBlockTaggersNum(eb, taggers_num);
     return eb;
 }
 

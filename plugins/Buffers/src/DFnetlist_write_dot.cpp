@@ -426,6 +426,11 @@ void DFnetlist_Impl::writeBlockDot(ostream& s, blockID b)
         s << "true";
     else
         s << "false";
+    // AYA: 26/12/2023:
+    s << ", taggers_num=";
+    s << to_string(B.taggers_num);
+    s << ", tagger_id=";
+    s << to_string(B.tagger_id);
     //////////////////////////////////////////
 
     if (B.type == ELASTIC_BUFFER) {

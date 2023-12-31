@@ -82,6 +82,28 @@ string get_component_tagged ( string parameters )
     return is_tagged;
 }
 
+// AYA: 26/12/2023
+string get_component_tagger_id ( string parameters )
+{
+
+    parameters = string_clean( parameters );
+    
+    string tagger_id = get_value ( parameters );
+    
+    return tagger_id;
+}
+
+// AYA: 26/12/2023
+string get_component_taggers_num ( string parameters )
+{
+
+    parameters = string_clean( parameters );
+    
+    string taggers_num = get_value ( parameters );
+    
+    return taggers_num;
+}
+
 
 string get_component_operator ( string parameters )
 {
@@ -652,6 +674,16 @@ void parse_components ( string v_0, string v_1 )
     string parameter;
 
     nodes[components_in_netlist].name = get_component_name ( v_0 );
+
+    // AYA: 27/12/2023: I need the tag id to know the offset of the tag bits to modify by the TAGGER, the logic is also decided in reference to the max_number_of_nested_taggers in vhdl_writer
+    if(nodes[components_in_netlist].name.find("tagger") != std::string::npos) {
+        int pos_ = nodes[components_in_netlist].name.find_last_of("_");
+        string substr = (nodes[components_in_netlist].name).substr(pos_ + 1, 1);
+        //cout << "\tAYAAA: inside dot_parser: THE substr representing the component ID is " << substr << "\n";
+        nodes[components_in_netlist].component_id = std::stoi(substr);
+        //cout << "\tAYAAA: inside dot_parser: THE stoi conversion is " << std::stoi(substr) << "\n";
+    }
+
     if ( !( nodes[components_in_netlist].name.empty() ) ) //Check if the name is not empty
     {
         
@@ -890,6 +922,20 @@ void parse_components ( string v_0, string v_1 )
                 else
                     nodes[components_in_netlist].is_tagged = 0;//false;
     
+            }
+
+             // AYA: 27/12/2023
+            if ( parameter.find("taggers_num") != std::string::npos )
+            {
+                 string taggers_num = get_component_taggers_num( parameters[indx] );
+                 nodes[components_in_netlist].taggers_num = stoi(taggers_num);
+            }
+
+             // AYA: 27/12/2023
+            if ( parameter.find("tagger_id") != std::string::npos )
+            {
+                 string tagger_id = get_component_tagger_id( parameters[indx] );
+                 nodes[components_in_netlist].tagger_id = stoi(tagger_id);
             }
             
         }

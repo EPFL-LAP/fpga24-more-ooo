@@ -527,6 +527,18 @@ public:
      */
     void setBlockTagged(blockID id, bool d);
 
+    // AYA: 26/12/2023
+    void setBlockTaggerId(blockID id, int tagger_id);
+
+     // AYA: 26/12/2023
+    void setBlockTaggersNum(blockID id, int taggers_num);
+
+    // AYA: 26/12/2023
+    int getBlockTaggersNum(blockID id);
+
+    // AYA: 26/12/2023
+    int getBlockTaggerId(blockID id);
+
     // AYA: 05/08/2023
      /**
      * @brief Returns the tagged flag of a block.
@@ -1289,6 +1301,8 @@ private:
 
         // AYA: 05/08/2023: added an extra field to specify if the component should be tagged or not
         bool is_tagged;
+        int taggers_num;
+        int tagger_id;
     };
 
     struct Port {

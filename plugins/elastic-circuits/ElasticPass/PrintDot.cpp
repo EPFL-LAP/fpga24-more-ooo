@@ -22,6 +22,10 @@ std::string outputSuffix(ENode* enode, unsigned i);
 
 std::ofstream dotfile;
 
+void delete_file_dbg(const std::string& filename) {
+    remove(filename.c_str());
+}
+
 ////////////////////////////// Aya's stuff
 void aya_printDotDFG(std::vector<ENode*>* enode_dag, std::vector<BBNode*>* bbnode_dag, std::string name, std::string serial_number, bool fix_mc_st_interfaces_flag) {
     std::string output_filename = name;
@@ -537,6 +541,7 @@ std::string aya_printDataflowEdges(std::vector<ENode*>* enode_dag, std::vector<B
 ////////////////////////////////////////////////// END OF THE LSQ CONTROL NETWORK STUFF!!!
 
 	}
+	delete_file_dbg("aya_FORKSS_MULSS.txt");
     return str;
 }
 
@@ -640,6 +645,12 @@ void aya_printDotNodes(std::vector<ENode*>* enode_dag, std::string serial_number
 				else
 					dotline += "false";
 				//////////////////////////////////////////
+				// AYA: 26/12/2023: added the following extra fields to support multiple taggers and aligners
+				dotline += ", taggers_num=";
+				dotline += to_string(enode->tagging_count);
+				dotline += ", tagger_id=";
+				dotline += to_string(enode->tagger_id);
+				/////////////////////////
 
 				dotline += "];\n";
 				

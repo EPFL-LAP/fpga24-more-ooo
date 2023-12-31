@@ -1,6 +1,10 @@
 #include "ElasticPass/CircuitGenerator.h"
 #include "ElasticPass/Utils.h"
 
+// AYA: 22/12/2023: added the following function to delete the files that were printed for debugging..
+void deleteFile(const std::string& filename) { remove(filename.c_str());}
+
+
 void CircuitGenerator::Fix_my_PhiPreds(LoopInfo& LI, networkType network_flag) {
 	// 08/10/2021: made the function generic to serve for both Phi_n and Phi_c (the non-redundant version!!)
 
@@ -416,6 +420,8 @@ void CircuitGenerator::removeExtraPhisWrapper(networkType network_flag) {
 	extra_phis_dbg_file << "\nAfter deleteExtraPhis\n ";
 	extra_phis_dbg_file.close();
 
+	deleteFile("INNER_remove_extra_phis_dbg.txt");
+
 } 
 
 void CircuitGenerator::deleteExtraPhis(networkType network_flag) {
@@ -649,6 +655,7 @@ void CircuitGenerator::removeExtraPhis(networkType network_flag) {
 	
 	}
 	
+	deleteFile("aya_check_redun_phi.txt");
 }
 
 void CircuitGenerator::checkLoops(Function& F, LoopInfo& LI, networkType network_flag) {
@@ -713,6 +720,8 @@ void CircuitGenerator::checkLoops(Function& F, LoopInfo& LI, networkType network
 		assert(new_phis->at(i)->type == Phi_n || new_phis->at(i)->type == Phi_c);
 		enode_dag->push_back(new_phis->at(i));
 	}
+
+	deleteFile("aya_DEBUG_LOOPS_PHIS.txt");
 }
 
 // TAKE CARE: URGENT!!

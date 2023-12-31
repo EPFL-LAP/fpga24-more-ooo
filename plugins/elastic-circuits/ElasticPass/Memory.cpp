@@ -5,6 +5,10 @@
 #include "OptimizeBitwidth/OptimizeBitwidth.h"
 
 
+// AYA: 22/12/2023: added the following function to delete the files that were printed for debugging..
+void deleteFile_mem_dbg(const std::string& filename) { remove(filename.c_str());}
+
+
 /**
  * @brief connectEnodeWithMCEnode
  * Performs the necessary connections between a memory instruction
@@ -1943,6 +1947,7 @@ void CircuitGenerator::printDebugDominatorTree() {
         }
     }
 
+    deleteFile_mem_dbg("dominatorTree.txt");
 }
 
 // TODO: this function needs to be properly tested.. 
@@ -2130,6 +2135,13 @@ void CircuitGenerator::add_smart_ControlForLSQ(bool lazy_fork_flag) {
         }
 
     }
+
+    deleteFile_mem_dbg("G_Graph.txt");
+
+    deleteFile_mem_dbg("general_MEMORY_dbg.txt");
+
+    deleteFile_mem_dbg("Managing_GSA_GENERATE.txt");
+    deleteFile_mem_dbg("Managing_Loops_muxes_branches.txt");
          
 }
 

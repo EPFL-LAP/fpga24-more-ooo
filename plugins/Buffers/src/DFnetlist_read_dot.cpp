@@ -217,6 +217,29 @@ static bool readTagged(DFnetlist_Impl& DF, blockID id, Agnode_t* v)
     return true;
 }
 
+// AYA: 26/12/2023:
+static bool readTaggerID(DFnetlist_Impl& DF, blockID id, Agnode_t* v) 
+{
+    const char* attr = agget(v, (char *) "tagger_id");
+    if (attr == nullptr) return true;
+
+    int tagger_id = std::atoi(attr);
+
+    DF.setBlockTaggerId(id, tagger_id);
+    return true;
+}
+
+static bool readTaggersNum(DFnetlist_Impl& DF, blockID id, Agnode_t* v) 
+{
+    const char* attr = agget(v, (char *) "taggers_num");
+    if (attr == nullptr) return true;
+
+    int taggers_num = std::atoi(attr);
+
+    DF.setBlockTaggersNum(id, taggers_num);
+    return true;
+}
+
 // Reads the delays of a block
 static bool readDelays(DFnetlist_Impl& DF, blockID id, Agnode_t* v)
 {
@@ -798,6 +821,10 @@ bool DFnetlist_Impl::readDataflowDot(FILE *f)
 
         // AYA: 05/08/2023
         if(not readTagged(*this, id, v)) return false;
+
+        if(not readTaggerID(*this, id, v)) return false;
+
+        if(not readTaggersNum(*this, id, v)) return false;
     }
 
     // Traverse the set of edges

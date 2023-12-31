@@ -5854,7 +5854,7 @@ use ieee.numeric_std.all;
 use IEEE.math_real.all;
 
 entity tagger is generic(
-    SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TAG_SIZE: integer
+    SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TOTAL_TAG_SIZE: integer; TAG_SIZE: integer; TAG_OFFSET: integer
 );
 port(
         clk, rst      : in  std_logic;
@@ -5865,7 +5865,6 @@ port(
 
         readyArray : out std_logic_vector(SIZE downto 0); -- doesnot have a -1 because it includes the pValid of the freeTag_data input too
 
-
         dataInArray   : in  data_array(SIZE - 1 downto 0)(DATA_SIZE_IN - 1 downto 0);
         dataOutArray  : out data_array(SIZE - 1 downto 0)(DATA_SIZE_OUT - 1 downto 0);
 
@@ -5873,7 +5872,7 @@ port(
        -- freeTag_valid : in std_logic;
        -- freeTag_ready : out std_logic;
 
-        tagOutArray : out data_array (SIZE - 1 downto 0)(TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
+        tagOutArray : out data_array (SIZE - 1 downto 0)(TOTAL_TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
         );
 end tagger;
 
@@ -5883,6 +5882,8 @@ signal join_valid : std_logic;
 signal join_nReady : std_logic;
 constant all_one : std_logic_vector(SIZE-1 downto 0) := (others => '1');
 
+constant tag_idx_lower : integer := TAG_SIZE * TAG_OFFSET; --unsigned(TOTAL_TAG_SIZE - 1 downto 0);
+constant tag_idx_upper : integer := tag_idx_lower + TAG_SIZE - 1; --unsigned(TOTAL_TAG_SIZE - 1 downto 0);
 
 signal join_readyArray : std_logic_vector(SIZE downto 0);
 
@@ -5890,6 +5891,9 @@ signal fork_ready: STD_LOGIC_VECTOR (0 downto 0);
 signal fork_useless_out : data_array(SIZE - 1 downto 0)(0 downto 0);
 
 begin
+
+    --tag_idx_lower <= TAG_SIZE * TAG_OFFSET;
+    --tag_idx_upper <= tag_idx_lower + TAG_SIZE - 1;
     
     j : entity work.join(arch) generic map(SIZE + 1)
                 port map(   pValidArray,
@@ -5902,7 +5906,7 @@ begin
     tagging_process : process (freeTag_data)
     begin
       for I in 0 to SIZE - 1 loop
-        tagOutArray(I) <= freeTag_data; --std_logic_vector(count_in0);
+        tagOutArray(I)(tag_idx_upper downto tag_idx_lower) <= freeTag_data;
       end loop;
     end process;
 
@@ -5943,7 +5947,7 @@ use ieee.numeric_std.all;
 use IEEE.math_real.all;
 
 entity un_tagger is generic(
-    SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TAG_SIZE: integer
+    SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TOTAL_TAG_SIZE: integer; TAG_SIZE: integer; TAG_OFFSET: integer
 );
 port(
         clk, rst      : in  std_logic;
@@ -5961,7 +5965,7 @@ port(
        -- freeTag_valid : in std_logic;
        -- freeTag_ready : out std_logic;
 
-        tagInArray : in data_array (SIZE - 1 downto 0)(TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
+        tagInArray : in data_array (SIZE - 1 downto 0)(TOTAL_TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
         );
 end un_tagger;
 
@@ -5973,7 +5977,14 @@ constant all_one : std_logic_vector(SIZE-1 downto 0) := (others => '1');
 
 signal join_readyArray : std_logic_vector(SIZE downto 0);
 
+constant tag_idx_lower : integer := TAG_SIZE * TAG_OFFSET; --unsigned(TOTAL_TAG_SIZE - 1 downto 0);
+constant tag_idx_upper : integer := tag_idx_lower + TAG_SIZE - 1; --unsigned(TOTAL_TAG_SIZE - 1 downto 0);
+
 begin
+
+    --tag_idx_lower <= TAG_SIZE * TAG_OFFSET;
+    --tag_idx_upper <= tag_idx_lower + TAG_SIZE - 1;
+
     
     j : entity work.join(arch) generic map(SIZE)
                 port map(   pValidArray,
@@ -5983,7 +5994,7 @@ begin
 
     dataOutArray <= dataInArray;
 
-    freeTag_data <= tagInArray(0);  -- take the tag of any of the inputs, they are all guaranteed to be the same
+    freeTag_data <= tagInArray(0)(tag_idx_upper downto tag_idx_lower);  -- take the tag of any of the inputs; they are all guaranteed to be the same
 
     -- I think it is wrong to calculate valid using nReady so I removed it
     process(join_valid)

@@ -419,8 +419,8 @@ public:
         if(!opt_status)
             cout << "*ERROR* MILP solution is UNFEASIBLE or UNBOUNDED" << endl;
 
-        //deleteTempFilename(lpfile);
-        //deleteTempFilename(outfile);
+        deleteTempFilename(lpfile);
+        deleteTempFilename(outfile);
         return true;
     }
 

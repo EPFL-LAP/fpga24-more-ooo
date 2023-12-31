@@ -98,6 +98,13 @@ typedef struct node
 
     // AYA: 05/08/2023:
     int is_tagged = -1;
+
+    // AYA: 26/12/2023
+    int taggers_num = 0;
+    int tagger_id = -1;
+
+    // AYA: 27/12/2023
+    int component_id = -1;
 } NODE_T;
 
 

@@ -6,82 +6,136 @@
 #include<iterator>
 #include<algorithm>
 
-void loop_master_from_input(std::string& phi_type_str, std::string& phi_id_str) {
-    std::string filename = TAG_INFO_PATH;
+void delete_file(const std::string& filename) {
+    remove(filename.c_str());
+}
+
+void loop_master_from_input(const std::string& tag_info_path, std::vector<std::string>& phi_type_str, std::vector<std::string>& phi_id_str) {
+    std::string filename = tag_info_path;
     std::ifstream file(filename, std::ifstream::in);
 
     if (!file) {
         cerr << "Error opening " << filename << " use default loop master value which is phi_0..." << endl;
-        phi_type_str = "_";
-        phi_id_str = "0";
+        phi_type_str.push_back("_");
+        phi_id_str.push_back("0");
         return;
     }
 
     string line;
-    assert(getline (file, line));
-    assert(getline (file, line));
-    assert(getline (file, phi_type_str));
-    assert(getline (file, phi_id_str));
+    assert(getline (file, line));  // tagging flag
+    assert(getline (file, line));  // number of tags
+    assert(getline (file, line));  // number of cmerges
+
+    int number_of_cmerges = std::stoi(line);  
+
+    for(int i = 0; i < number_of_cmerges; i++) {
+        assert(getline (file, line));
+        phi_type_str.push_back(line);
+
+        assert(getline (file, line));
+        phi_id_str.push_back(line);
+
+    }
+   
 }
 
 
 // AYA: 27/09/2023
 // TEMPORARIly assuming that an if-then-else is made up of a single Mux, so we break once we find one and we connect the Cmerge cond output to sink
-void CircuitGenerator::convert_if_else_cmerge() {
-    ENode* if_else_master = nullptr;
+void CircuitGenerator::convert_if_else_cmerge(const std::string& tag_info_path) {
+    //ENode* if_else_master = nullptr;
+
+    // AYA: 22/12/2023: read vectors from file because you can have more than 1 cmerge
+    std::vector<std::string> phi_type_str;
+    std::vector<std::string> phi_id_str;
+
+    std::vector<node_type> phi_types;
+    std::vector<int> phi_ids;
+
+    loop_master_from_input(tag_info_path, phi_type_str, phi_id_str);
+    assert(phi_type_str.size() == phi_id_str.size());
+
+    for(int i = 0; i < phi_type_str.size(); i++) {
+        int phi_id = std::stoi(phi_id_str.at(i));
+        assert(phi_id >= 0);
+        phi_ids.push_back(phi_id);
+
+        node_type phi_type;
+        if(phi_type_str.at(i) == "_") {
+            phi_type = Phi_;
+        } else if(phi_type_str.at(i) == "_n"){
+            phi_type = Phi_n;
+        } else {
+            assert(phi_type_str.at(i) == "_c");
+            phi_type = Phi_c;
+        }
+        phi_types.push_back(phi_type);
+    }
+    assert(phi_types.size() == phi_ids.size());
+    
+    /////////////////////////////
 
     for(auto& enode: *enode_dag) {
-
-         if((enode->type == Phi_ || enode->type == Phi_n || enode->type == Phi_c ) && !enode->is_merge_init && !enode->is_shannons_mux) {
+        ENode* if_else_master = nullptr;
+        if((enode->type == Phi_ || enode->type == Phi_n || enode->type == Phi_c ) && !enode->is_merge_init && !enode->is_shannons_mux) {
             if(BBMap->at(enode->BB)->is_loop_header)
                 continue; // skip muxes at loop headers
 
             assert(enode->isMux);
-            
-            if_else_master = enode;
-            break;
+
+            // AYA: 22/12/2023: made it a loop to loop over all of the inputted CMerges checking if enode equals any of them
+            for(int mm = 0; mm < phi_ids.size(); mm++) {
+                if((enode->type == phi_types.at(mm) && enode->id == phi_ids.at(mm))) {
+                    if_else_master = enode;
+                    break;
+                }
+            }
+
+            //////////////////////////////
+            if(if_else_master != nullptr) {  // if this enode happens to be the if_else_master
+                // erase its condition input AND change its type to CMerge
+
+                //But, first store it inside the object in an extra ENode field
+                if_else_master->old_cond_of_if_else_merge = if_else_master->CntrlPreds->at(0);
+
+                auto pos = std::find(if_else_master->CntrlPreds->at(0)->CntrlSuccs->begin(), if_else_master->CntrlPreds->at(0)->CntrlSuccs->end(), if_else_master);
+                assert(pos != if_else_master->CntrlPreds->at(0)->CntrlSuccs->end());
+                if_else_master->CntrlPreds->at(0)->CntrlSuccs->erase(pos);
+
+                if_else_master->CntrlPreds->erase(if_else_master->CntrlPreds->begin());
+
+                if_else_master->isMux = false;
+                if_else_master->isCntrlMg = true;
+                if_else_master->is_if_else_cmerge = true;
+
+                if_else_master->cmerge_data_succs = new std::vector<ENode*>;
+                if_else_master->cmerge_control_succs = new std::vector<ENode*>;
+
+                /////////
+                 // remove its succs from the data network and temporarily place them in two separate vectors to mark them during addFork
+                assert(if_else_master->CntrlSuccs->size() > 0);
+                for(int k = 0; k < if_else_master->CntrlSuccs->size(); k++) {
+                    if_else_master->cmerge_data_succs->push_back(if_else_master->CntrlSuccs->at(k));
+                }
+                if_else_master->CntrlSuccs->clear();
+
+                // AYA: 30/09/2023: storing the condition node of the Branches of this if-then-else inside it because we lose the connection later as soon as we insert the TAAGER
+                for(auto& enode_3 : *enode_dag) {
+                    // push all Branches that have the same condition as the if_else_cmerge
+                    if((enode_3->type == Branch_n && (enode_3->CntrlPreds->at(1) == if_else_master->old_cond_of_if_else_merge || enode_3->CntrlPreds->at(1)->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge))) {
+                        enode_3->old_cond_of_if_else_branch = enode_3->CntrlPreds->at(1);
+                    } else if( (enode_3->type == Branch_c && (enode_3->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge || enode_3->CntrlPreds->at(0)->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge))) {
+                        enode_3->old_cond_of_if_else_branch = enode_3->CntrlPreds->at(0);
+                    }
+                }
+
+            }             
         }
     }
 
-    assert(if_else_master != nullptr);
+    // TODO: to add extra code to make this CMERGE provide the select of the rest of the MUxes belonging to the same if-then-else
 
-    if(if_else_master != nullptr) {  // if this enode happens to be the if_else_master
-        // erase its condition input AND change its type to CMerge
-
-        //But, first store it inside the object in an extra ENode field
-        if_else_master->old_cond_of_if_else_merge = if_else_master->CntrlPreds->at(0);
-
-        auto pos = std::find(if_else_master->CntrlPreds->at(0)->CntrlSuccs->begin(), if_else_master->CntrlPreds->at(0)->CntrlSuccs->end(), if_else_master);
-        assert(pos != if_else_master->CntrlPreds->at(0)->CntrlSuccs->end());
-        if_else_master->CntrlPreds->at(0)->CntrlSuccs->erase(pos);
-
-        if_else_master->CntrlPreds->erase(if_else_master->CntrlPreds->begin());
-
-        if_else_master->isMux = false;
-        if_else_master->isCntrlMg = true;
-        if_else_master->is_if_else_cmerge = true;
-
-        if_else_master->cmerge_data_succs = new std::vector<ENode*>;
-        if_else_master->cmerge_control_succs = new std::vector<ENode*>;
-
-        // remove its succs from the data network and temporarily place them in two separate vectors to mark them during addFork
-        assert(if_else_master->CntrlSuccs->size() > 0);
-        for(int k = 0; k < if_else_master->CntrlSuccs->size(); k++) {
-            if_else_master->cmerge_data_succs->push_back(if_else_master->CntrlSuccs->at(k));
-        }
-        if_else_master->CntrlSuccs->clear();
-
-        // AYA: 30/09/2023: storing the condition node of the Branches of this if-then-else inside it because we lose the connection later as soon as we insert the TAAGER
-        for(auto& enode_3 : *enode_dag) {
-            // push all Branches that have the same condition as the if_else_cmerge
-            if((enode_3->type == Branch_n && (enode_3->CntrlPreds->at(1) == if_else_master->old_cond_of_if_else_merge || enode_3->CntrlPreds->at(1)->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge))) {
-                enode_3->old_cond_of_if_else_branch = enode_3->CntrlPreds->at(1);
-            } else if( (enode_3->type == Branch_c && (enode_3->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge || enode_3->CntrlPreds->at(0)->CntrlPreds->at(0) == if_else_master->old_cond_of_if_else_merge))) {
-                enode_3->old_cond_of_if_else_branch = enode_3->CntrlPreds->at(0);
-            }
-        }
-
-    } 
+    //assert(if_else_master != nullptr);
 }
 
 
@@ -89,7 +143,7 @@ void CircuitGenerator::convert_if_else_cmerge() {
 // AYA: 16/09/2023
 // Because I currently do not have a specific strategy to decide which specific Mux among all Muxes of 1 loop should become the master and be the Cmerge,
         // I'm just choosing the one that feeds the multiplier
-void CircuitGenerator::convert_loop_cmerge(bool ignore_outer_most_loop) {
+void CircuitGenerator::convert_loop_cmerge(const std::string& tag_info_path, bool ignore_outer_most_loop) {
     std::ofstream dbg_file;
     dbg_file.open("AYA_converting_loop_cmerge.txt");
 
@@ -97,6 +151,36 @@ void CircuitGenerator::convert_loop_cmerge(bool ignore_outer_most_loop) {
     // 1st) loop over all Muxes at loop headers and search for a Mux that feeds a multiplier, and convert it to CMerge
     // 2nd) LOop over the reamining MUxes at the loop header of this particular loop, and call removeINIT() which internally connects the Mux directly to the condition of the loop: will leave it this way temporarily
                 // then let them be fed with the 2nd output of the CMerge instead of from the loop condition!!
+
+    // AYA: 22/12/2023: read vectors from file because you can have more than 1 cmerge
+    std::vector<std::string> phi_type_str;
+    std::vector<std::string> phi_id_str;
+
+    std::vector<node_type> phi_types;
+    std::vector<int> phi_ids;
+
+    loop_master_from_input(tag_info_path, phi_type_str, phi_id_str);
+    assert(phi_type_str.size() == phi_id_str.size());
+
+    for(int i = 0; i < phi_type_str.size(); i++) {
+        int phi_id = std::stoi(phi_id_str.at(i));
+        assert(phi_id >= 0);
+        phi_ids.push_back(phi_id);
+
+        node_type phi_type;
+        if(phi_type_str.at(i) == "_") {
+            phi_type = Phi_;
+        } else if(phi_type_str.at(i) == "_n"){
+            phi_type = Phi_n;
+        } else {
+            assert(phi_type_str.at(i) == "_c");
+            phi_type = Phi_c;
+        }
+        phi_types.push_back(phi_type);
+    }
+    assert(phi_types.size() == phi_ids.size());
+    
+    /////////////////////////////
 
     for(auto& enode: *enode_dag) {
         ENode* loop_master = nullptr;
@@ -140,26 +224,13 @@ void CircuitGenerator::convert_loop_cmerge(bool ignore_outer_most_loop) {
                     }
                 } */
 
-                // AYA: 09/12/2023
-                std::string phi_type_str, phi_id_str;
-                loop_master_from_input(phi_type_str, phi_id_str);
-
-                int phi_id = std::stoi(phi_id_str);
-                assert(phi_id >= 0);
-
-                node_type phi_type;
-                if(phi_type_str == "_") {
-                    phi_type = Phi_;
-                } else if(phi_type_str == "_n"){
-                    phi_type = Phi_n;
-                } else {
-                    assert(phi_type_str == "_c");
-                    phi_type = Phi_c;
+                // AYA: 22/12/2023: made it a loop to loop over all of the inputted CMerges checking if enode equals any of them
+                for(int mm = 0; mm < phi_ids.size(); mm++) {
+                    if((enode->type == phi_types.at(mm) && enode->id == phi_ids.at(mm))) {
+                        loop_master = enode;
+                        break;
+                    }
                 }
-                /////////////////////////////
-
-                if((enode->type == phi_type && enode->id == phi_id))// || (enode->type == Phi_ && enode->id == 31))
-                    loop_master = enode;
                 
                 // AYA: 17/12/2023: moved the following to happen below to ensure that it happens only to Muxes in the same loop as the loop master!!
                 /*// in any case regardless whether this enode is the loop master or not, call the following two functions
@@ -310,7 +381,9 @@ void CircuitGenerator::convert_loop_cmerge(bool ignore_outer_most_loop) {
 
     }
 
-    assert(found_at_least_one_loop_master); // sanity check: must have found at least one loop_master!!
+    //assert(found_at_least_one_loop_master); // sanity check: must have found at least one loop_master!!
+
+    delete_file("AYA_converting_loop_cmerge.txt");
 
 }
 
@@ -702,6 +775,8 @@ void CircuitGenerator::convert_to_special_mux(){
         }
          
     }
+
+    delete_file("AYA_checking_lopp_condition.txt");
 }
 
 // ON A SIDE NOTE, IN TERMS OF PRIORITIZING THE RULES OF TRANSFORMATIONS IN CASE SEVERAL OF THEM ARE APPLICABLE AT ONE POINT IN TIME, 

@@ -2,6 +2,10 @@
 #include "ElasticPass/Utils.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 
+// AYA: 22/12/2023: added the following function to delete the files that were printed for debugging..
+void deleteFile_dbg(const std::string& filename) { remove(filename.c_str());}
+
+
 void CircuitGenerator::FindLoopDetails(LoopInfo& LI) {
 	// TEMPORARY FOR DEBUGGING!!
 	std::ofstream t_file;
@@ -84,6 +88,8 @@ void CircuitGenerator::FindLoopDetails(LoopInfo& LI) {
 		if(bbnode->loop == inner_most_loop)
 			bbnode->is_inner_most_loop = true;
 	}
+
+	deleteFile_dbg("aya_loops_details.txt");
 
 }
 
@@ -689,6 +695,10 @@ void CircuitGenerator::ConnectProds_Cons(bool cntrl_path_flag, bool extra_cst_ch
 	delete bridges_indices;
 
 	delete branches;
+
+	deleteFile_dbg("new_piers_paths_check.txt");
+
+	deleteFile_dbg("add_bridges_dbg.txt");
 }
 
 
@@ -886,6 +896,11 @@ void CircuitGenerator::ConnectProds_Cons_wrong(bool cntrl_path_flag, bool extra_
 	delete bridges_indices;
 
 	delete branches;
+
+	deleteFile_dbg("new_piers_paths_check_wrong.txt");
+
+	deleteFile_dbg("add_bridges_dbg_wrong.txt");
+
 }
 
 
@@ -1176,6 +1191,8 @@ void CircuitGenerator::ConnectProds_Cons_Merges() {
 
 	}
 
+	deleteFile_dbg("virtualBBs_check.txt");
+
 }
 
 // DIDN'T DO IT IN THE END!!!!!!!!
@@ -1332,6 +1349,8 @@ void CircuitGenerator::ConnectProds_Cons_Merges_cntrl() {
 		}
 
 	}
+
+	deleteFile_dbg("virtualBBs_check_cntrl.txt");
 
 }
 
@@ -1504,6 +1523,8 @@ void CircuitGenerator::printDbgBranches(std::vector<ENode*>* branches, bool cntr
 
 
 	} 
+
+	deleteFile_dbg("aya_br_succ_file.txt");
 
 	 
 }

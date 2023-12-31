@@ -14,11 +14,16 @@
  * Authors: Radhika Ghosal
  * 			Ayatallah Elakhras
  */
+#define PATH_TO_TAG_INFO_PATH "/home/dynamatic/Dynamatic/etc/dynamatic/path_to_tagging_info.txt"
+//std::string TAG_INFO_PATH;
+// "/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt"
+bool is_tag_from_input(const std::string& tag_info_path);   // implemented in AddTags.cpp
+int number_of_tags_from_input(const std::string& tag_info_path);  // implemented in AddTags.cpp
+void loop_master_from_input(const std::string& tag_info_path, std::vector<std::string>& phi_type_str, std::vector<std::string>& phi_id_str); // implemented in newLoops_management.cpp
 
-#define TAG_INFO_PATH	"/home/dynamatic/Dynamatic/etc/dynamatic/tagging_info.txt"
-bool is_tag_from_input();   // implemented in AddTags.cpp
-int number_of_tags_from_input();  // implemented in AddTags.cpp
-void loop_master_from_input(std::string& phi_type_str, std::string& phi_id_str); // implemented in newLoops_management.cpp
+
+void get_tag_info_file_path(std::string&);
+
 
 //------------- Forward Declarations ---------------------//
 
@@ -627,15 +632,15 @@ public:
 	void addTMFOSuccs(ENode* tmfo);  // called inside addFork
 
 	// AYA: 16/09/2023:
-	void convert_loop_cmerge(bool ignore_outer_most_loop); // implemented in newLoops_management.cpp
+	void convert_loop_cmerge(const std::string& tag_info_path, bool ignore_outer_most_loop); // implemented in newLoops_management.cpp
 	void addCMergeSuccs(ENode* cmerge_node);
 
 	// AYA: 27/09/2023
-	void convert_if_else_cmerge();  // implemented in newLoops_management.cpp
+	void convert_if_else_cmerge(const std::string& tag_info_path);  // implemented in newLoops_management.cpp
 
-	void addMissingAlignerInputs();
+	void addMissingAlignerInputs(const std::string& tag_info_path);
 
-	void build_Aligner(ENode* reference_input, std::vector<ENode*>* other_inputs, ENode* un_tagger);
+	void build_Aligner(const std::string& tag_info_path, ENode* reference_input, std::vector<ENode*>* other_inputs, ENode* un_tagger, ENode* tagger);
 	void connect_Aligner_Branch_Mux(networkType network_flag, ENode* aligner_branch, ENode* aligner_mux, int number_of_tags);
 
     //--------------------------------------------------------//
