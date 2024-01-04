@@ -2,3 +2,6 @@ benchmarks/gemm
 benchmarks/matvec
 benchmarks/mvt
 benchmarks/bicg
+benchmarks/gsum_single
+benchmarks/gsum_many
+benchmarks/img_avg

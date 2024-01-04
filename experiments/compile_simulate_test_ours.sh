@@ -24,7 +24,7 @@ experiment_type="ours"
 
 
 i=0
-myArray=(gemm matvec mvt bicg)
+myArray=(gemm matvec mvt bicg gsum_single gsum_many img_avg)
 
 while IFS= read -r line
 do
