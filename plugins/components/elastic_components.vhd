@@ -2878,6 +2878,7 @@ entity init_elasticFifoInner is
 
   Generic (
     INPUT_COUNT:integer; OUTPUT_COUNT:integer; DATA_SIZE_IN:integer; DATA_SIZE_OUT:integer; FIFO_DEPTH : integer
+    --ACTUAL_FIFO_DEPTH: integer
   );
  
   Port ( 
@@ -2895,13 +2896,13 @@ architecture arch of init_elasticFifoInner is
 
     signal ReadEn   : std_logic := '0';
     signal WriteEn  : std_logic := '0';
-    signal Tail : natural range 0 to FIFO_DEPTH - 1;
-    signal Head : natural range 0 to FIFO_DEPTH - 1;
+    signal Tail : natural range 0 to FIFO_DEPTH - 1; -- ACTUAL
+    signal Head : natural range 0 to FIFO_DEPTH - 1; 
     signal Empty    : std_logic;
     signal Full : std_logic;
     signal Bypass: std_logic;
     signal fifo_valid: std_logic;
-    type FIFO_Memory is array (0 to FIFO_DEPTH - 1) of STD_LOGIC_VECTOR (DATA_SIZE_IN-1 downto 0);
+    type FIFO_Memory is array (0 to FIFO_DEPTH - 1) of STD_LOGIC_VECTOR (DATA_SIZE_IN-1 downto 0);  -- ACTUAL
     signal Memory : FIFO_Memory;
 
 
@@ -2925,7 +2926,7 @@ begin
         if rising_edge(CLK) then
           if RST = '1' then
             -- AYA: 18/09/2023: I want to initialize the Memory with data upon reset
-            for I in 0 to FIFO_DEPTH - 1 loop
+            for I in 0 to FIFO_DEPTH - 1 loop   -- ACTUAL
                 Memory(I) <= std_logic_vector(to_unsigned(I, Memory(I)'length));  -- I set the initialization to the index of each element, but it can be anything else up to us..
             end loop;
           else
@@ -2950,12 +2951,12 @@ TailUpdate_proc : process (CLK)
             if RST = '1' then
                --Tail <= 0;
                -- AYA: 18/09/2023: initializing the fifo with some elements filling the entire of it 
-               Tail <= FIFO_DEPTH - 1;
+               Tail <= FIFO_DEPTH - 1;   -- AYA: ACTUAL 1/3/2024: changed it to be orthogonal to the number of tags
             else
           
                 if (WriteEn = '1') then
 
-                    Tail  <= (Tail + 1) mod FIFO_DEPTH;
+                    Tail  <= (Tail + 1) mod FIFO_DEPTH; -- AYA: ACTUAL: 1/3/2024: changed it to be orthogonal to the number of tags
                               
                 end if;
                
@@ -2976,8 +2977,8 @@ HeadUpdate_proc : process (CLK)
   
         if (ReadEn = '1') then
 
-            Head  <= (Head + 1) mod FIFO_DEPTH;
-                      
+            Head  <= (Head + 1) mod FIFO_DEPTH; -- AYA: 1/3/2024: changed it to be orthogonal to the number of tags
+
         end if;
        
     end if;
@@ -2993,14 +2994,14 @@ FullUpdate_proc : process (CLK)
   
     if RST = '1' then
        --Full <= '0';
-       Full <= '1';  -- initializing to full
+       Full <= '1';  -- initializing to full  -- TO THINK OF THIS!!!
     else
   
         -- if only filling but not emptying
         if (WriteEn = '1') and (ReadEn = '0') then
 
             -- if new tail index will reach head index
-            if ((Tail +1) mod FIFO_DEPTH = Head) then
+            if ((Tail +1) mod FIFO_DEPTH = Head) then -- AYA: ACTUAL: 1/3/2024: changed it to be orthogonal to the number of tags
 
                 Full  <= '1';
 
@@ -3376,6 +3377,7 @@ entity free_tags_fifo is
         DATA_SIZE_IN  : integer;
         DATA_SIZE_OUT : integer;
         FIFO_DEPTH : integer
+        --ACTUAL_FIFO_DEPTH : integer
     );
 port (
         clk, rst      : in  std_logic;
@@ -3412,7 +3414,7 @@ begin
     fifo_nready <= nReadyArray(0);
     fifo_in <= dataInArray(0);
 
-    fifo: entity work.init_elasticFifoInner(arch) generic map (1, 1, DATA_SIZE_IN, DATA_SIZE_IN, FIFO_DEPTH)
+    fifo: entity work.init_elasticFifoInner(arch) generic map (1, 1, DATA_SIZE_IN, DATA_SIZE_IN, FIFO_DEPTH) --ACTUAL_FIFO_DEPTH)
         port map (
         --inputs
             clk => clk, 
@@ -5877,6 +5879,229 @@ port(
 end tagger;
 
 architecture arch of tagger is
+
+signal j0_valid : std_logic;
+signal f0_valid : std_logic_vector(0 downto 0);
+
+signal j0_ready : std_logic_vector(1 downto 0);
+signal j0_pValid : std_logic_vector(1 downto 0);
+
+signal j1_valid : std_logic;
+signal f1_valid : std_logic_vector(0 downto 0);
+
+signal j1_ready : std_logic_vector(1 downto 0);
+signal j1_pValid : std_logic_vector(1 downto 0);
+
+signal j2_valid : std_logic;
+signal f2_valid : std_logic_vector(0 downto 0);
+
+signal j2_ready : std_logic_vector(1 downto 0);
+signal j2_pValid : std_logic_vector(1 downto 0);
+
+signal j3_valid : std_logic;
+signal f3_valid : std_logic_vector(0 downto 0);
+
+signal j3_ready : std_logic_vector(1 downto 0);
+signal j3_pValid : std_logic_vector(1 downto 0);
+
+signal f0_readyArray : std_logic_vector(0 downto 0);
+signal f1_readyArray : std_logic_vector(0 downto 0);
+signal f2_readyArray : std_logic_vector(0 downto 0);
+signal f3_readyArray : std_logic_vector(0 downto 0);
+
+--signal pValidArray_0_temp : std_logic_vector(0 downto 0);
+
+signal tagOutArray_0_temp : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal tagOutArray_1_temp : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal tagOutArray_2_temp : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal tagOutArray_3_temp : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+
+signal nReadyArray_0_temp : std_logic_vector(0 downto 0);
+
+signal nReadyArray_1_temp : std_logic_vector(0 downto 0);
+signal nReadyArray_2_temp : std_logic_vector(0 downto 0);
+signal nReadyArray_3_temp : std_logic_vector(0 downto 0);
+
+
+-- tag_fork signals
+signal fork_ready : std_logic_vector(0 downto 0);
+signal tag_fork_validArray : std_logic_vector(SIZE - 1 downto 0);
+signal all_fifos_ready : std_logic_vector(SIZE - 1 downto 0);
+signal tag_fork_out : data_array(SIZE - 1 downto 0)(TAG_SIZE - 1 downto 0);
+
+signal freeTag_data_temp_0 : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal freeTag_data_temp_1 : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal freeTag_data_temp_2 : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+signal freeTag_data_temp_3 : data_array(0 downto 0)(TAG_SIZE - 1 downto 0);
+
+signal f0_pValid : std_logic_vector(0 downto 0);
+signal f1_pValid : std_logic_vector(0 downto 0);
+signal f2_pValid : std_logic_vector(0 downto 0);
+signal f3_pValid : std_logic_vector(0 downto 0);
+
+
+begin
+    dataOutArray <= dataInArray;
+    tagOutArray(0) <= tagOutArray_0_temp(0);
+    tagOutArray(1) <= tagOutArray_1_temp(0);
+    tagOutArray(2) <= tagOutArray_2_temp(0);
+    tagOutArray(3) <= tagOutArray_3_temp(0);
+
+    freeTag_data_temp_0(0) <= tag_fork_out(0);
+    freeTag_data_temp_1(0) <= tag_fork_out(1);
+    freeTag_data_temp_2(0) <= tag_fork_out(2);
+    freeTag_data_temp_3(0) <= tag_fork_out(3);
+
+    all_fifos_ready(0) <= f0_readyArray(0);
+    all_fifos_ready(1) <= f1_readyArray(0);
+    all_fifos_ready(2) <= f2_readyArray(0);
+    all_fifos_ready(3) <= f3_readyArray(0);
+
+    --pValidArray_0_temp(0) <= pValidArray(0);
+    f0_pValid(0) <= tag_fork_validArray(0);
+    f1_pValid(0) <= tag_fork_validArray(1);
+    f2_pValid(0) <= tag_fork_validArray(2);
+    f3_pValid(0) <= tag_fork_validArray(3);
+
+    nReadyArray_0_temp(0) <= j0_ready(0);  --nReadyArray(0);
+    nReadyArray_1_temp(0) <= j1_ready(0);  --nReadyArray(1);
+    nReadyArray_2_temp(0) <= j2_ready(0);  --nReadyArray(2);
+    nReadyArray_3_temp(0) <= j3_ready(0);  --nReadyArray(3);
+
+    readyArray(0) <= fork_ready(0); --'1';   -- TO CHANGE THIS TO FORK THE INPUT AND TAKE THE READY OF THE FORK!!!!
+    readyArray(1) <= j0_ready(1);
+    readyArray(2) <= j1_ready(1);
+    readyArray(3) <= j2_ready(1);
+    readyArray(4) <= j3_ready(1);
+
+    validArray(0) <= j0_valid; --f0_validArray(0) and pValidArray(1);
+    validArray(1) <= j1_valid; --f1_validArray(0) and pValidArray(2);
+    validArray(2) <= j2_valid; --f2_validArray(0) and pValidArray(3);
+    validArray(3) <= j3_valid; --f3_validArray(0) and pValidArray(4);
+
+
+    j0_pValid(0) <= f0_valid(0);
+    j0_pValid(1) <= pValidArray(1);
+    j0 : entity work.join(arch) generic map(2)
+                port map(   j0_pValid,
+                            nReadyArray(0), 
+                            j0_valid,
+                            j0_ready);
+
+    f0 : entity work.free_tags_fifo(arch) generic map(1,1,TAG_SIZE,TAG_SIZE,10)--, 10)
+            port map(   clk,
+                        rst,
+                        freeTag_data_temp_0,
+                        tagOutArray_0_temp,
+                        f0_pValid,--pValidArray_0_temp,  -- To change to the fork's
+                        nReadyArray_0_temp,  -- the next ready of the fifo is the 0th ready of the join
+                        f0_valid,
+                        f0_readyArray);  -- To change to the fork's
+
+    j1_pValid(0) <= f1_valid(0);
+    j1_pValid(1) <= pValidArray(2);
+    j1 : entity work.join(arch) generic map(2)
+                port map(   j1_pValid,
+                            nReadyArray(1), 
+                            j1_valid,
+                            j1_ready);
+
+    f1 : entity work.free_tags_fifo(arch) generic map(1,1,TAG_SIZE,TAG_SIZE,10)--, 10)
+            port map(   clk,
+                        rst,
+                        freeTag_data_temp_1,
+                        tagOutArray_1_temp,
+                        f1_pValid,--pValidArray_0_temp,  -- To change to the fork's
+                        nReadyArray_1_temp,
+                        f1_valid,
+                        f1_readyArray);  -- To change to the fork's
+
+    j2_pValid(0) <= f2_valid(0);
+    j2_pValid(1) <= pValidArray(3);
+    j2 : entity work.join(arch) generic map(2)
+                port map(   j2_pValid,
+                            nReadyArray(2), 
+                            j2_valid,
+                            j2_ready);
+
+    f2 : entity work.free_tags_fifo(arch) generic map(1,1,TAG_SIZE,TAG_SIZE,10)--, 10)
+            port map(   clk,
+                        rst,
+                        freeTag_data_temp_2,
+                        tagOutArray_2_temp,
+                        f2_pValid,--pValidArray_0_temp,  -- To change to the fork's
+                        nReadyArray_2_temp,
+                        f2_valid,
+                        f2_readyArray);  -- To change to the fork's
+
+    j3_pValid(0) <= f3_valid(0);
+    j3_pValid(1) <= pValidArray(4);
+    j3 : entity work.join(arch) generic map(2)
+                port map(   j3_pValid,
+                            nReadyArray(3), 
+                            j3_valid,
+                            j3_ready);
+
+    f3 : entity work.free_tags_fifo(arch) generic map(1,1,TAG_SIZE,TAG_SIZE,10)--, 10)
+        port map(   clk,
+                    rst,
+                    freeTag_data_temp_3,
+                    tagOutArray_3_temp,
+                    f3_pValid,--pValidArray_0_temp,  -- To change to the fork's
+                    nReadyArray_3_temp,
+                    f3_valid,
+                    f3_readyArray); -- To change to the fork's
+
+    tag_fork : entity work.fork(arch) generic map(1, SIZE, TAG_SIZE, TAG_SIZE)
+            port map (
+        --inputs
+            clk => clk,  --clk
+            rst => rst,  --rst
+            pValidArray(0) => pValidArray(0),   -- this pValid corresponds to the free tag from outside
+            dataInArray (0) => freeTag_data,
+            nReadyArray => all_fifos_ready, 
+        --outputs
+            dataOutArray => tag_fork_out,
+            readyArray => fork_ready,  
+            validArray => tag_fork_validArray    
+            );
+
+    
+end architecture;
+-------------------------------------------------------------------
+
+--------------------------- AYA New TAGGER 17/09/2023-- it bypasses whatever data inputted to it but adds to it the extra tag signal
+-------------------------------------------------------------------
+library ieee;
+use ieee.std_logic_1164.all;
+use work.customTypes.all;
+use ieee.numeric_std.all;
+use IEEE.math_real.all;
+
+entity WORKING_tagger is generic(
+    SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TOTAL_TAG_SIZE: integer; TAG_SIZE: integer; TAG_OFFSET: integer
+);
+port(
+        clk, rst      : in  std_logic;
+        pValidArray : in std_logic_vector(SIZE downto 0); -- doesnot have a -1 because it includes the pValid of the freeTag_data input too
+
+        nReadyArray : in std_logic_vector(SIZE - 1 downto 0);
+        validArray : out std_logic_vector(SIZE - 1 downto 0);
+
+        readyArray : out std_logic_vector(SIZE downto 0); -- doesnot have a -1 because it includes the pValid of the freeTag_data input too
+
+        dataInArray   : in  data_array(SIZE - 1 downto 0)(DATA_SIZE_IN - 1 downto 0);
+        dataOutArray  : out data_array(SIZE - 1 downto 0)(DATA_SIZE_OUT - 1 downto 0);
+
+        freeTag_data : in std_logic_vector(TAG_SIZE-1 downto 0);
+       -- freeTag_valid : in std_logic;
+       -- freeTag_ready : out std_logic;
+
+        tagOutArray : out data_array (SIZE - 1 downto 0)(TOTAL_TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
+        );
+end WORKING_tagger;
+
+architecture arch of WORKING_tagger is
 
 signal join_valid : std_logic;
 signal join_nReady : std_logic;

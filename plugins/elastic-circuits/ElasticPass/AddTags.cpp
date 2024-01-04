@@ -608,20 +608,26 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 	new_un_tagger->id = un_tagger_id++;
 	enode_dag->push_back(new_un_tagger);
 
-	ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", un_tagger_bb);// if_else_branches.at(0)->BB);
-	new_free_tags_fifo->id = free_tags_fifo_id++;
-	enode_dag->push_back(new_free_tags_fifo);
+	// AYA: 3/1/2024: commented out the following
+	// ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", un_tagger_bb);// if_else_branches.at(0)->BB);
+	// new_free_tags_fifo->id = free_tags_fifo_id++;
+	// enode_dag->push_back(new_free_tags_fifo);
 
 	// AYA: 26/12/2023: store the tagger and the un_tagger inside the loop_master_cmerger
 	if_else_master_cmerge->tagger = new_tagger;
 	if_else_master_cmerge->un_tagger = new_un_tagger;
 
+	// AYA: 3/1/2024: commented out the following
 	// connect the tagger and untagger to the fifo of free tags
-	new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
-	new_free_tags_fifo->CntrlPreds->push_back(new_un_tagger);
+	// new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
+	// new_free_tags_fifo->CntrlPreds->push_back(new_un_tagger);
 
-	new_tagger->CntrlPreds->push_back(new_free_tags_fifo);
-	new_free_tags_fifo->CntrlSuccs->push_back(new_tagger);
+	// new_tagger->CntrlPreds->push_back(new_free_tags_fifo);
+	// new_free_tags_fifo->CntrlSuccs->push_back(new_tagger);
+
+	// AYA: 3/1/2024: replaced the above commented code with the following
+	new_un_tagger->CntrlSuccs->push_back(new_tagger);
+	new_tagger->CntrlPreds->push_back(new_un_tagger);
 
 	// connect the inputs of the TAGGER from the data inputs of the Branches in the if_else_branches vector
 	for(int i = 0; i < if_else_branches.size(); i++) {

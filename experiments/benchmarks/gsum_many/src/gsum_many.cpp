@@ -46,7 +46,7 @@ int main(void){
 			c[i][j] = (float) j + 10;
 			aya[i][j] = 1 - j;
 
-			if (j%10 == 0)
+			if (j%100 == 0)
 			   	a[i][j] = j;
 		}
 	}

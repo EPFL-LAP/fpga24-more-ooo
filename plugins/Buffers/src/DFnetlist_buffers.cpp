@@ -922,7 +922,8 @@ bool DFnetlist_Impl::createPathConstraints(Milp_Model& milp, milpVarsEB& Vars, d
 
          // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO ) 
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER ) */)  // 1/4/2024: added the last OR
             continue;
 
         int v1 =  Vars.time_path[getSrcPort(c)];
@@ -1021,7 +1022,8 @@ bool DFnetlist_Impl::createPathConstraints_sc(Milp_Model &milp, milpVarsEB &Vars
 
         // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO ) 
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER )*/ )  // 1/4/2024: added the last OR
             continue;
 
         int v1 =  Vars.time_path[getSrcPort(c)];
@@ -1224,7 +1226,8 @@ bool DFnetlist_Impl::createPathConstraints_remaining(Milp_Model &milp, milpVarsE
 
         // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER )*/ )  // 1/4/2024: added the last OR
             continue;
 
         int v1 =  Vars.time_path[getSrcPort(c)];
@@ -1317,7 +1320,8 @@ bool DFnetlist_Impl::createElasticityConstraints(Milp_Model& milp, milpVarsEB& V
 
        // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO ) 
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER )*/ )  // 1/4/2024: added the last OR
             continue;
 
         int v1 = Vars.time_elastic[getSrcPort(c)];
@@ -1373,7 +1377,8 @@ bool DFnetlist_Impl::createElasticityConstraints_sc(Milp_Model &milp, milpVarsEB
 
         // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER ) */)  // 1/4/2024: added the last OR
             continue;
 
         int v1 = Vars.time_elastic[getSrcPort(c)];
@@ -1545,7 +1550,8 @@ bool DFnetlist_Impl::createElasticityConstraints_remaining(Milp_Model &milp, mil
 
         // AYA: 07/12/2023: edges between un_tagger, free_tags_fifo and tagger force no buffers there!
         if ( (getBlockType(getDstBlock(c)) == FREE_TAGS_FIFO && getBlockType(getSrcBlock(c)) == UNTAGGER)
-         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO )  )
+         || (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == FREE_TAGS_FIFO ) 
+         /*|| (getBlockType(getDstBlock(c)) == TAGGER && getBlockType(getSrcBlock(c)) == UNTAGGER ) */)  // 1/4/2024: added the last OR
             continue;
 
         int v1 = Vars.time_elastic[getSrcPort(c)];
@@ -1991,7 +1997,11 @@ void DFnetlist_Impl::instantiateElasticBuffers()
         //     ebs.push_back(c);
 
         // AYA: 08/12/2023: force insertion of a buffer between a TAGGER and a FORK which is the input that goes directly to the ALIGNER!
-        if((getBlockType(getSrcBlock(c)) == TAGGER && getBlockType(getDstBlock(c)) == FORK)  && !hasBuffer(c)) {
+        // if((getBlockType(getSrcBlock(c)) == TAGGER && getBlockType(getDstBlock(c)) == FORK)  && !hasBuffer(c)) {
+        //     ebs.push_back(c);
+        // }
+        // AYA: 01/04/2023: commented the above to make it more general to ensure we have a TEHB after TAGGER outputs
+        if((getBlockType(getSrcBlock(c)) == TAGGER)  && !hasBuffer(c)) {
             ebs.push_back(c);
         }
 
@@ -2018,9 +2028,13 @@ void DFnetlist_Impl::instantiateElasticBuffers()
             insertBuffer(c, 1, true);
         } else {
              // AYA: 08/12/2023: force insertion of a buffer between a TAGGER and a FORK which is the input that goes directly to the ALIGNER!
-            if((getBlockType(getSrcBlock(c)) == TAGGER && getBlockType(getDstBlock(c)) == FORK)  && !hasBuffer(c)) {
-                insertBuffer(c, 1, false);   // TO CHECK THE NUMBER OF SLOTS HERE!!!!
-            } else 
+            // if((getBlockType(getSrcBlock(c)) == TAGGER && getBlockType(getDstBlock(c)) == FORK)  && !hasBuffer(c)) {
+            //     insertBuffer(c, 1, false);   // TO CHECK THE NUMBER OF SLOTS HERE!!!!
+            // } 
+            // AYA: 01/04/2023: commented the above to make it more general to ensure we have a TEHB after TAGGER outputs
+            if((getBlockType(getSrcBlock(c)) == TAGGER)  && !hasBuffer(c)) {
+                insertBuffer(c, 1, true);
+            }else 
                 insertBuffer(c, getChannelBufferSize(c), isChannelTransparent(c));
 
 

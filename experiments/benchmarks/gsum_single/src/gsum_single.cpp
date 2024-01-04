@@ -43,7 +43,7 @@ int main(void){
 
 			c[i][j] = (float) j + 10;
 
-			if (j%10 == 0)
+			if (j%100 == 0)
 		    	a[i][j] = j;
 		}
 	}
