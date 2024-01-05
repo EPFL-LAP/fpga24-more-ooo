@@ -8,16 +8,16 @@ int img_avg(in_int_t A[N], in_float_t B[N], inout_float_t C[N])
 {
   int i;
 	int thr;
-	for(i = 0; i < N; i++ ) {
+	for(i = 0; i < 2; i++ ) {
     	thr = A[i];
     	float s = 0.0;
     	if(thr > 0) {  
-    		for(int j = 0; j < 5; j++)
-				s += B[j];  
+    		s = B[0];  
     	} else {
-    		s = B[0];
+    		for(int j = 0; j < 2; j++)
+					s += B[j];	
     	}
-    	C[i] = s * 5;
+    	C[i] = s;// * 5.5; 
 	}
 
 	return i;
@@ -40,10 +40,10 @@ int main(void){
 			b[i][j] = (float) j + 10;
 
 			c[i][j] = (float) j + 10;
-			thr[i][j] = j;
+			thr[i][j] = 0;
 
-			if (j%10 == 0)
-			   	thr[i][j] = 1-j;
+			//if (j%10 == 0)
+			   //	thr[i][j] = 1-j;
 		}
 
     int i = 0;

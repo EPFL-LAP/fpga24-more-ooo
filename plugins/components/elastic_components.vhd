@@ -1561,6 +1561,7 @@ process(dataInArray)
 
 end arch;
 
+-- AYA: 5/1/24 : MADE IT INIT FOR LOOPS!! CAN'T BE USED FOR IF-THEN-ELSE
 --------------------------------------------------------------  merge
 ---------------------------------------------------------------------
 ---- AYA: IMP: 12/10/2023: MAKE SURE THAT YOU ONLY USE THIS FOR IF-THEN-ELSE NOT LOOP!!!
@@ -1593,6 +1594,127 @@ entity merge_tagged is
 end merge_tagged;
 
 architecture arch of merge_tagged is
+signal tehb_data_in  : std_logic_vector(DATA_SIZE_IN + TAG_SIZE - 1 downto 0);
+signal tehb_pvalid : std_logic;
+signal tehb_ready : std_logic;
+
+signal tagged_data_in : data_array(1 downto 0)(DATA_SIZE_IN + TAG_SIZE-1 downto 0); -- AYA: 04/10/2023
+signal tagged_data_out : data_array(0 downto 0)(DATA_SIZE_IN + TAG_SIZE - 1 downto 0);  -- 04/10/2023 
+
+type state_type is (INIT, ITER);
+signal state : state_type;
+
+begin
+
+    -- AYA: 04/10/2023
+    tagged_data_in(0) <= tagInArray(0) & dataInArray(0);  --04/10/2023
+    tagged_data_in(1) <= tagInArray(1) & dataInArray(1);  --04/10/2023
+
+    dataOutArray(0) <= tagged_data_out(0)(DATA_SIZE_IN -1 downto 0);  --04/10/2023
+    tagOutArray(0) <= tagged_data_out(0)(DATA_SIZE_IN + TAG_SIZE -1 downto DATA_SIZE_IN);  --04/10/2023
+
+    state_proc : process (clk, rst)
+    begin
+        if(rst = '1') then
+            state <= INIT;
+        elsif rising_edge(clk) then
+            -- AYA: transition to ITER if there is a valid token at in0 and you are ready to output it 
+                -- IMP note: I replaced nReadyArray with tehb_ready because the earlier is wrong timing wise and it appeared in loops of depth 3
+            if(state = INIT and pValidArray(0) = '1' and tehb_ready = '1') then
+                state <= ITER;
+            elsif(state = ITER and pValidArray(1) = '1' and unsigned(tagged_data_in(1)) = 0) then
+            -- AYA: transition back to INIT state if there is a valid token of value 0 at the in1 input
+                    -- We do not care of nReady here because we destroy the token internally instead of outputting it!
+                state <= INIT;   
+            end if;
+        end if;
+    end process;
+
+    data_valid_proc: process(state, tagged_data_in, pValidArray) 
+        variable tmp_data_out  : unsigned(DATA_SIZE_IN + TAG_SIZE - 1 downto 0);
+        variable tmp_valid_out : std_logic;
+    begin
+        tmp_data_out  := unsigned(tagged_data_in(0));
+        tmp_valid_out := '0';
+        case state is
+            when INIT =>
+                if(pValidArray(0) = '1') then 
+                    tmp_data_out  := to_unsigned(0, DATA_SIZE_IN + TAG_SIZE); --unsigned(dataInArray(0));
+                    tmp_valid_out := '1';
+                end if;
+
+            when ITER =>
+                if (pValidArray(1) = '1' and unsigned(tagged_data_in(1)) = 1) then
+                    tmp_data_out  := unsigned(tagged_data_in(1));
+                    tmp_valid_out := '1';
+                end if;                         
+        end case;
+        tehb_data_in <= std_logic_vector(resize(tmp_data_out,DATA_SIZE_OUT + TAG_SIZE));
+        tehb_pvalid  <= tmp_valid_out;
+    end process;
+-----------------------------------------------------------------
+    ready_proc: process(state, tehb_ready, pValidArray)
+    begin
+        case state is 
+            when INIT =>
+                readyArray(0) <= tehb_ready; 
+                readyArray(1) <= not pValidArray(1);
+            when ITER => 
+                -- AYA: not sure if I should add something extra when the output is = 0 because 
+                    -- in this case ready should be 1 regardless of tehb_ready simply because we do not output anything
+                        -- What I'm hoping for is that as soon as the state changes it becomes 1 again naturally
+                readyArray(1) <= tehb_ready;
+                readyArray(0) <= not pValidArray(0);
+        end case;
+    end process;
+
+    tehb1: entity work.TEHB(arch) generic map (1, 1, DATA_SIZE_IN + TAG_SIZE, DATA_SIZE_IN + TAG_SIZE)
+        port map (
+        --inputspValidArray
+            clk => clk, 
+            rst => rst, 
+            pValidArray(0)  => tehb_pvalid, 
+            nReadyArray(0) => nReadyArray(0),    
+            validArray(0) => validArray(0), 
+        --outputs
+            readyArray(0) => tehb_ready,   
+            dataInArray(0) => tehb_data_in,
+            dataOutArray(0) => tagged_data_out(0)
+        );
+end arch;
+
+--------------------------------------------------------------  merge
+---------------------------------------------------------------------
+---- AYA: IMP: 12/10/2023: MAKE SURE THAT YOU ONLY USE THIS FOR IF-THEN-ELSE NOT LOOP!!!
+library ieee;
+use ieee.std_logic_1164.all;
+use work.customTypes.all;
+use ieee.numeric_std.all;
+
+entity OLD_merge_tagged is
+
+    generic(
+        INPUTS        : integer;
+        OUTPUTS        : integer;
+        DATA_SIZE_IN  : integer;
+        DATA_SIZE_OUT : integer;
+        TAG_SIZE : integer
+    );
+    port(
+        clk, rst      : in  std_logic;
+        dataInArray   : in  data_array(INPUTS - 1 downto 0)(DATA_SIZE_IN - 1 downto 0);
+        dataOutArray  : out data_array(0 downto 0)(DATA_SIZE_OUT - 1 downto 0);
+        pValidArray   : in  std_logic_vector(INPUTS - 1 downto 0);
+        nReadyArray   : in  std_logic_vector(0 downto 0);
+        validArray    : out std_logic_vector(0 downto 0);
+        readyArray    : out std_logic_vector(INPUTS - 1 downto 0);
+
+        tagInArray : in data_array (INPUTS - 1 downto 0)(TAG_SIZE-1 downto 0); 
+        tagOutArray : out data_array (0 downto 0)(TAG_SIZE-1 downto 0)); 
+
+end OLD_merge_tagged;
+
+architecture arch of OLD_merge_tagged is
 signal tehb_data_in  : std_logic_vector(DATA_SIZE_IN + TAG_SIZE - 1 downto 0);
 signal tehb_pvalid : std_logic;
 signal tehb_ready : std_logic;
@@ -2878,7 +3000,6 @@ entity init_elasticFifoInner is
 
   Generic (
     INPUT_COUNT:integer; OUTPUT_COUNT:integer; DATA_SIZE_IN:integer; DATA_SIZE_OUT:integer; FIFO_DEPTH : integer
-    --ACTUAL_FIFO_DEPTH: integer
   );
  
   Port ( 
@@ -2896,13 +3017,13 @@ architecture arch of init_elasticFifoInner is
 
     signal ReadEn   : std_logic := '0';
     signal WriteEn  : std_logic := '0';
-    signal Tail : natural range 0 to FIFO_DEPTH - 1; -- ACTUAL
-    signal Head : natural range 0 to FIFO_DEPTH - 1; 
+    signal Tail : natural range 0 to FIFO_DEPTH - 1;
+    signal Head : natural range 0 to FIFO_DEPTH - 1;
     signal Empty    : std_logic;
     signal Full : std_logic;
     signal Bypass: std_logic;
     signal fifo_valid: std_logic;
-    type FIFO_Memory is array (0 to FIFO_DEPTH - 1) of STD_LOGIC_VECTOR (DATA_SIZE_IN-1 downto 0);  -- ACTUAL
+    type FIFO_Memory is array (0 to FIFO_DEPTH - 1) of STD_LOGIC_VECTOR (DATA_SIZE_IN-1 downto 0);
     signal Memory : FIFO_Memory;
 
 
@@ -2926,7 +3047,7 @@ begin
         if rising_edge(CLK) then
           if RST = '1' then
             -- AYA: 18/09/2023: I want to initialize the Memory with data upon reset
-            for I in 0 to FIFO_DEPTH - 1 loop   -- ACTUAL
+            for I in 0 to FIFO_DEPTH - 1 loop
                 Memory(I) <= std_logic_vector(to_unsigned(I, Memory(I)'length));  -- I set the initialization to the index of each element, but it can be anything else up to us..
             end loop;
           else
@@ -2951,12 +3072,12 @@ TailUpdate_proc : process (CLK)
             if RST = '1' then
                --Tail <= 0;
                -- AYA: 18/09/2023: initializing the fifo with some elements filling the entire of it 
-               Tail <= FIFO_DEPTH - 1;   -- AYA: ACTUAL 1/3/2024: changed it to be orthogonal to the number of tags
+               Tail <= FIFO_DEPTH - 1;
             else
           
                 if (WriteEn = '1') then
 
-                    Tail  <= (Tail + 1) mod FIFO_DEPTH; -- AYA: ACTUAL: 1/3/2024: changed it to be orthogonal to the number of tags
+                    Tail  <= (Tail + 1) mod FIFO_DEPTH;
                               
                 end if;
                
@@ -2977,8 +3098,8 @@ HeadUpdate_proc : process (CLK)
   
         if (ReadEn = '1') then
 
-            Head  <= (Head + 1) mod FIFO_DEPTH; -- AYA: 1/3/2024: changed it to be orthogonal to the number of tags
-
+            Head  <= (Head + 1) mod FIFO_DEPTH;
+                      
         end if;
        
     end if;
@@ -2994,14 +3115,14 @@ FullUpdate_proc : process (CLK)
   
     if RST = '1' then
        --Full <= '0';
-       Full <= '1';  -- initializing to full  -- TO THINK OF THIS!!!
+       Full <= '1';  -- initializing to full
     else
   
         -- if only filling but not emptying
         if (WriteEn = '1') and (ReadEn = '0') then
 
             -- if new tail index will reach head index
-            if ((Tail +1) mod FIFO_DEPTH = Head) then -- AYA: ACTUAL: 1/3/2024: changed it to be orthogonal to the number of tags
+            if ((Tail +1) mod FIFO_DEPTH = Head) then
 
                 Full  <= '1';
 
@@ -3049,6 +3170,7 @@ EmptyUpdate_proc : process (CLK)
 end process;
 end architecture;
 ----------------------------------------------------------------------
+
 
 
 --------------------- AYA's tagged version 05/08/2023
