@@ -1,14 +1,14 @@
 #!/bin/sh
 #Author: Ayatallah Elakhras <ayatallah.elakhras@epfl.ch>
 
-workingdir="$(pwd)/synth_place_route_reports_ours/"
+workingdir="$(pwd)/synth_place_route_reports_ours"
 file=filelist.lst
 i=0
 myArray=(gemm matvec mvt bicg gsum_single gsum_many img_avg)
 
 timing_rpt=timing_post_pr.rpt
 util_rpt=utilization_post_pr.rpt
-sim_report_dir=simulation_reports_ours/
+sim_report_dir=simulation_reports_ours
 clk_period=4
 
 # generate the summary reports

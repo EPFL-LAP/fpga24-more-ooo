@@ -5855,7 +5855,7 @@ use work.customTypes.all;
 use ieee.numeric_std.all;
 use IEEE.math_real.all;
 
-entity tagger is generic(
+entity NEWW_tagger is generic(
     SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TOTAL_TAG_SIZE: integer; TAG_SIZE: integer; TAG_OFFSET: integer
 );
 port(
@@ -5876,9 +5876,9 @@ port(
 
         tagOutArray : out data_array (SIZE - 1 downto 0)(TOTAL_TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
         );
-end tagger;
+end NEWW_tagger;
 
-architecture arch of tagger is
+architecture arch of NEWW_tagger is
 
 signal j0_valid : std_logic;
 signal f0_valid : std_logic_vector(0 downto 0);
@@ -6078,7 +6078,7 @@ use work.customTypes.all;
 use ieee.numeric_std.all;
 use IEEE.math_real.all;
 
-entity WORKING_tagger is generic(
+entity tagger is generic(
     SIZE : integer ; DATA_SIZE_IN: integer; DATA_SIZE_OUT: integer; TOTAL_TAG_SIZE: integer; TAG_SIZE: integer; TAG_OFFSET: integer
 );
 port(
@@ -6099,9 +6099,9 @@ port(
 
         tagOutArray : out data_array (SIZE - 1 downto 0)(TOTAL_TAG_SIZE-1 downto 0) -- AYA: the tag associated with each output 
         );
-end WORKING_tagger;
+end tagger;
 
-architecture arch of WORKING_tagger is
+architecture arch of tagger is
 
 signal join_valid : std_logic;
 signal join_nReady : std_logic;

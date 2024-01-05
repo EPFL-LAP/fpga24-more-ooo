@@ -450,19 +450,19 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        	if(enode_2->BB == nullptr || enode_2->type == Tagger || enode_2->type == Un_Tagger || enode_2->type == Free_Tags_Fifo)  // skip tagger nodes because we do not tag them!
 	        		continue;
 	        	if(/*(enode_2->type == Fork_ || enode_2->type == Fork_c) &&*/ BBMap->at(enode_2->BB)->loop == BBMap->at(enode->BB)->loop ) {
-	        		//if(!enode_2->is_tagged) {
+	        		if(!enode_2->is_tagged) {  // ended up not using the nesting concept so adding htis condition
 	        			enode_2->is_tagged = true;
 	        			enode_2->tagging_count++;
-	        		//}
+	        		}
 	        	}
 
 	        	// 12/10/2023: supporting the case of a fork fed by the loop exit Branch and feeding the un_tagger
 	        	else if(enode_2->CntrlSuccs->size() > 0) {   // AYA: 29/1/2023: made it an else if to avoid counting some components twice 
 	        		if(enode_2->CntrlSuccs->at(0)->type == Un_Tagger) {
-	        			//if(!enode_2->is_tagged) {
+	        			if(!enode_2->is_tagged) {  // this condition should be here regardless of whether you use nesting or not..
 	        				enode_2->is_tagged = true;
 		        			enode_2->tagging_count++;
-	        			//}
+	        			}
 	        		}
 	        	}
 	        }
@@ -479,10 +479,10 @@ void CircuitGenerator::tag_cluster_nodes() {
 				if((enode_3->type == Branch_n || enode_3->type == Branch_c) && enode_3->old_cond_of_if_else_branch != nullptr) {
 					if(enode_3->old_cond_of_if_else_branch == enode->old_cond_of_if_else_merge) {
 						if_else_branches.push_back(enode_3);
-						//if(!enode_3->is_tagged) {
+						if(!enode_3->is_tagged) { // ended up not using the nesting concept so adding htis condition
 							enode_3->is_tagged = true;
 							enode_3->tagging_count++;
-						//}
+						}
 					}
 				}
 					
@@ -499,10 +499,10 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        				&& BBMap->at(enode_2->BB)->Idx > BBMap->at(if_else_branches.at(0)->BB)->Idx) 
 	        				&& enode_2->BB != enode->BB)
 	        		) {
-	        		//if(!enode_2->is_tagged) {
+	        		if(!enode_2->is_tagged) { // ended up not using the nesting concept so adding htis condition
         				enode_2->is_tagged = true;
 	        			enode_2->tagging_count++;
-	        		//}
+	        		}
 	        		
 	        	}
 
@@ -609,9 +609,9 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 	enode_dag->push_back(new_un_tagger);
 
 	// AYA: 3/1/2024: commented out the following
-	// ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", un_tagger_bb);// if_else_branches.at(0)->BB);
-	// new_free_tags_fifo->id = free_tags_fifo_id++;
-	// enode_dag->push_back(new_free_tags_fifo);
+	ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", un_tagger_bb);// if_else_branches.at(0)->BB);
+	new_free_tags_fifo->id = free_tags_fifo_id++;
+	enode_dag->push_back(new_free_tags_fifo);
 
 	// AYA: 26/12/2023: store the tagger and the un_tagger inside the loop_master_cmerger
 	if_else_master_cmerge->tagger = new_tagger;
@@ -619,15 +619,15 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 
 	// AYA: 3/1/2024: commented out the following
 	// connect the tagger and untagger to the fifo of free tags
-	// new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
-	// new_free_tags_fifo->CntrlPreds->push_back(new_un_tagger);
+	new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
+	new_free_tags_fifo->CntrlPreds->push_back(new_un_tagger);
 
-	// new_tagger->CntrlPreds->push_back(new_free_tags_fifo);
-	// new_free_tags_fifo->CntrlSuccs->push_back(new_tagger);
+	new_tagger->CntrlPreds->push_back(new_free_tags_fifo);
+	new_free_tags_fifo->CntrlSuccs->push_back(new_tagger);
 
 	// AYA: 3/1/2024: replaced the above commented code with the following
-	new_un_tagger->CntrlSuccs->push_back(new_tagger);
-	new_tagger->CntrlPreds->push_back(new_un_tagger);
+	// new_un_tagger->CntrlSuccs->push_back(new_tagger);
+	// new_tagger->CntrlPreds->push_back(new_un_tagger);
 
 	// connect the inputs of the TAGGER from the data inputs of the Branches in the if_else_branches vector
 	for(int i = 0; i < if_else_branches.size(); i++) {
@@ -832,6 +832,7 @@ void CircuitGenerator::insert_tagger_untagger_loop_node(ENode* loop_master_cmerg
 	// AYA: 26/12/2023:
 	new_un_tagger->tagger_id = new_tagger->id;
 
+	// AYA: 3/1/2024: commented out the following
 	// let's make the free fifo tag in the same BB as that of the tagger
 	ENode* new_free_tags_fifo = new ENode(Free_Tags_Fifo, "free_tags_fifo", new_un_tagger->BB);
 	new_free_tags_fifo->id = free_tags_fifo_id++;
@@ -857,11 +858,15 @@ void CircuitGenerator::insert_tagger_untagger_loop_node(ENode* loop_master_cmerg
 	enode_dag->push_back(source_node);*/
 	////////////////////////////////// replace the above part with the untagger!!
 
+	// AYA: 3/1/2024: commented out the following
 	new_un_tagger->CntrlSuccs->push_back(new_free_tags_fifo);
 	new_free_tags_fifo->CntrlPreds->push_back(new_un_tagger);
-
 	new_tagger->CntrlPreds->push_back(new_free_tags_fifo);
 	new_free_tags_fifo->CntrlSuccs->push_back(new_tagger);
+
+	// AYA: 3/1/2024: replaced the above commented code with the following
+	// new_un_tagger->CntrlSuccs->push_back(new_tagger);
+	// new_tagger->CntrlPreds->push_back(new_un_tagger);
 
 	/*new_un_tagger->CntrlSuccs->push_back(new_tagger);
 	new_tagger->CntrlPreds->push_back(new_un_tagger);*/

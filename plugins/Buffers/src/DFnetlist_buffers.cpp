@@ -2034,8 +2034,13 @@ void DFnetlist_Impl::instantiateElasticBuffers()
             // AYA: 01/04/2023: commented the above to make it more general to ensure we have a TEHB after TAGGER outputs
             if((getBlockType(getSrcBlock(c)) == TAGGER)  && !hasBuffer(c)) {
                 insertBuffer(c, 1, true);
-            }else 
-                insertBuffer(c, getChannelBufferSize(c), isChannelTransparent(c));
+            }else {
+                if(getBlockType(getSrcBlock(c)) == CNTRL_MG) {   // AYA: 01/04/2024: added the following to fix the bicg
+                    insertBuffer(c, hardcode_N + 1, isChannelTransparent(c));
+
+                } else 
+                    insertBuffer(c, getChannelBufferSize(c), isChannelTransparent(c));
+            }
 
 
             // AYA: 07/12/2023:
