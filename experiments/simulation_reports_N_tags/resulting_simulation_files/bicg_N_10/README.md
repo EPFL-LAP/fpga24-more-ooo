@@ -1,0 +1,1 @@
+This directory should contain the produced simulation files for N = 10.

@@ -1,0 +1,1 @@
+This directory should contain the produced simulation files for each N after running the N_tag_simulate_experiment.sh script.
