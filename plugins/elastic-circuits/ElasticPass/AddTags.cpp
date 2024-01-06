@@ -10,7 +10,7 @@ void delete_File(const std::string& filename) {
     remove(filename.c_str());
 }
 
-int get_cmerges_num_from_input(const std::string& tag_info_path) {
+int CircuitGenerator::get_cmerges_num_from_input(const std::string& tag_info_path) {
 	std::string filename = tag_info_path;
     std::ifstream file(filename, std::ifstream::in);
 
@@ -24,8 +24,20 @@ int get_cmerges_num_from_input(const std::string& tag_info_path) {
     assert(getline (file, line));  // number of tags
     assert(getline (file, line));  // number of cmerges
 
+    bool flag_1 = false;
+    bool flag_2 = false;
+    for(int uu = 0; uu < enode_dag->size(); uu++) {
+        if(enode_dag->at(uu)->is_if_else_cmerge)
+            flag_1 = true;
+        if(enode_dag->at(uu)->is_data_loop_cmerge) {
+            flag_2 = true;
+        }
+    }
+    if(!(flag_1 && flag_2))
+    	return 2; 
+
     int number_of_cmerges = std::stoi(line);
-    return number_of_cmerges +1;
+    return number_of_cmerges -1;
 }
 
 void get_tag_info_file_path(std::string& tag_info_path) {

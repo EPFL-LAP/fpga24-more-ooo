@@ -4,7 +4,7 @@
 workingdir="$(pwd)/synth_place_route_reports_baseline"
 file=filelist.lst
 i=0
-myArray=(gemm matvec mvt bicg gsum_single gsum_many img_avg)
+myArray=(gemm matvec mvt bicg img_avg)
 
 timing_rpt=timing_post_pr.rpt
 util_rpt=utilization_post_pr.rpt

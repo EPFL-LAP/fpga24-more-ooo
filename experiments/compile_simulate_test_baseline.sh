@@ -23,7 +23,7 @@ path_to_tagging_info_directory="/home/dynamatic/Dynamatic/etc/dynamatic/"
 experiment_type="baseline"
 
 i=0
-myArray=(gemm matvec mvt bicg gsum_single gsum_many img_avg)
+myArray=(gemm matvec mvt bicg img_avg)
 
 while IFS= read -r line
 do

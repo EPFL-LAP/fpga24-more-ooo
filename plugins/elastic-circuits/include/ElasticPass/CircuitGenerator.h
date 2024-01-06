@@ -115,6 +115,8 @@ public:
 
     }
 
+    int get_cmerges_num_from_input(const std::string& tag_info_path);
+
     void fix_start_generation(ENode* init);  // AYA: 06/09/2023: added this to comply with the convention of the new INIT
     void fix_INIT_inputs();  // AYA: 06/09/2023: added this to comply with the convention of the new INIT
 
