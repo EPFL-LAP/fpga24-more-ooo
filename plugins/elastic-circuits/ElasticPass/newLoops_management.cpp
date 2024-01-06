@@ -226,7 +226,7 @@ void CircuitGenerator::convert_loop_cmerge(const std::string& tag_info_path, boo
 
                 // AYA: 22/12/2023: made it a loop to loop over all of the inputted CMerges checking if enode equals any of them
                 for(int mm = 0; mm < phi_ids.size(); mm++) {
-                    if((enode->type == phi_types.at(mm) && enode->id == phi_ids.at(mm))) {
+                    if(enode->type == phi_types.at(mm) && (enode->id == phi_ids.at(mm) /*|| enode->id == 9*/)) {
                         loop_master = enode;
                         break;
                     }

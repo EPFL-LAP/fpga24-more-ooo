@@ -604,7 +604,7 @@ public:
 	void tag_loop_components();
 
 	// 17/09/2023:
-	void insert_tagger_untagger_wrapper();
+	void insert_tagger_untagger_wrapper(const std::string& tag_info_path);
 	void insert_tagger_untagger_loop_node(ENode* loop_master_cmerge);
 
 	// 27/09/2023:
@@ -612,7 +612,7 @@ public:
 
 	// 18/09/2023: Forks are added after inserting the tagger, so need to check over the newly added forks to see which of them need to be tagged
 		// then I decided to postpone the tagging of all components until this point
-	void tag_cluster_nodes();
+	void tag_cluster_nodes(const std::string& tag_info_path);
 
 
 	// AYA: 24/02/2023

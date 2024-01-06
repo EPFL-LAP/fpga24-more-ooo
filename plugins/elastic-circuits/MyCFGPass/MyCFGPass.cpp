@@ -405,7 +405,7 @@ public:
 				circuitGen->convert_if_else_cmerge(tag_info_path);
 			}
 			if(loop_cmerge_flag || if_else_cmerge_flag)
-				circuitGen->insert_tagger_untagger_wrapper(); // implemented in AddTags.cpp: 
+				circuitGen->insert_tagger_untagger_wrapper(tag_info_path); // implemented in AddTags.cpp: 
 
 
 		// IMP Note: this function is also important to connect the predecessors of all branches!!!
@@ -414,10 +414,20 @@ public:
 			
 			// AYA: 18/09/2023: call the following function to label the clustered nodes as tagged
 			if(loop_cmerge_flag || if_else_cmerge_flag) {
-				circuitGen->tag_cluster_nodes(); // implemented in AddTags.cpp: 
+				circuitGen->tag_cluster_nodes(tag_info_path); // implemented in AddTags.cpp: 
 
-				// AYA: 28/09/2023
-				circuitGen->addMissingAlignerInputs(tag_info_path);  // this function (i) inserts the ALIGNER, (ii) identifies the DIRTY nodes, marks them and passes their clean inputs through the TAGGER/UNTAGGER
+				// AYA: 1/5/2024
+                bool flag_1 = false;
+                bool flag_2 = false;
+                for(int uu = 0; uu < enode_dag->size(); uu++) {
+                    if(enode_dag->at(uu)->is_if_else_cmerge)
+                        flag_1 = true;
+                    if(enode_dag->at(uu)->is_data_loop_cmerge) {
+                        flag_2 = true;
+                    }
+                }
+                //if(!(flag_1 && flag_2))
+				    circuitGen->addMissingAlignerInputs(tag_info_path);  // this function (i) inserts the ALIGNER, (ii) identifies the DIRTY nodes, marks them and passes their clean inputs through the TAGGER/UNTAGGER
 			}
 
 			//general_dbg_file << "\nAfter addFork!\n";

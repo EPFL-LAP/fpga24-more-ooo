@@ -10,6 +10,24 @@ void delete_File(const std::string& filename) {
     remove(filename.c_str());
 }
 
+int get_cmerges_num_from_input(const std::string& tag_info_path) {
+	std::string filename = tag_info_path;
+    std::ifstream file(filename, std::ifstream::in);
+
+    if (!file) {
+        cerr << "Error opening " << filename << " use default loop master value which is phi_0..." << endl;
+        return 0;
+    }
+
+    string line;
+    assert(getline (file, line));  // tagging flag
+    assert(getline (file, line));  // number of tags
+    assert(getline (file, line));  // number of cmerges
+
+    int number_of_cmerges = std::stoi(line);
+    return number_of_cmerges +1;
+}
+
 void get_tag_info_file_path(std::string& tag_info_path) {
 	std::string filename = PATH_TO_TAG_INFO_PATH;
 	std::ifstream file(filename, std::ifstream::in);
@@ -267,6 +285,7 @@ void CircuitGenerator::build_Aligner(const std::string& tag_info_path, ENode* re
 
 // IMP TO NOTE: in clustering the loop clusters, for now I assume that only one of the Branches of the loop carry values outside the loop
 void CircuitGenerator::addMissingAlignerInputs(const std::string& tag_info_path) {
+	int number_of_cmerges = get_cmerges_num_from_input(tag_info_path);
 
 	// 2nd: FOR NOW I just TAG inputs of the direct successor of the is_if_else_cmerge and then untag it immediately
 		// Then, I will manually position the ALIGNER between the TAGGER and UNTAGGER of this edge!!
@@ -289,16 +308,22 @@ void CircuitGenerator::addMissingAlignerInputs(const std::string& tag_info_path)
 						un_tagger = e;
 				}*/
 				// AYA: 26/12/2023: replaced the above code with directly accessing the stored tagger/untagger to avoid mistakes in the presence of multiple taggers/untaggers in the circuit
-				assert(enode->tagger != nullptr && enode->un_tagger != nullptr);
+				if((enode->is_data_loop_cmerge && number_of_cmerges == 2) || (enode->is_if_else_cmerge && number_of_cmerges == 1))
+					assert(enode->tagger != nullptr && enode->un_tagger != nullptr);
 				tagger = enode->tagger;
 			    un_tagger = enode->un_tagger;
 			}
-			assert(tagger!=nullptr && un_tagger!=nullptr);
+			if((enode->is_data_loop_cmerge && number_of_cmerges == 2)|| (enode->is_if_else_cmerge && number_of_cmerges == 1))
+				assert(tagger!=nullptr && un_tagger!=nullptr);
 
 			if(enode->is_if_else_cmerge) {
-				cluster_exit = enode;
+				if(number_of_cmerges == 1) { // consider the insertion of if-then-else ALIGNER only if this is the only cmerge
+					cluster_exit = enode;
 
-				reference_input = enode;
+					reference_input = enode;
+
+				}   
+				
 				// old way of doing things when I was only supporting the if-then-else case!!
 				/*assert(master_cmerge->CntrlSuccs->size() == 2);  // this means 1 data output and 1 control output (which is the extra output of the Merge)
 
@@ -313,6 +338,7 @@ void CircuitGenerator::addMissingAlignerInputs(const std::string& tag_info_path)
 				dirty_node = master_cmerge->CntrlSuccs->at(0)->CntrlSuccs->at(idx_in_untagger_preds + 1);*/
 
 			} else if(enode->is_data_loop_cmerge) {
+				if(number_of_cmerges == 2) {
 				// search for a Branch that is at the loop exit of the loop that contains the cmerge master at its header and has one succs outside the loop
 					// TODO: Note that for now I assume that there is only one of those!!
 				for(int i = 0; i < enode_dag->size(); i++) {
@@ -344,107 +370,122 @@ void CircuitGenerator::addMissingAlignerInputs(const std::string& tag_info_path)
 								}
 							}
 						}*/
+					} else {  // AYA: 5/1/24
+						if(enode_dag->at(i)->is_if_else_cmerge) {
+
+							if(enode_dag->at(i)->cmerge_data_succs->at(0)->type == Un_Tagger) {
+								assert(6!=6);
+								cluster_exit = enode_dag->at(i);
+								break;
+							}
+						}
 					}
 				}
 				reference_input = cluster_exit;
+				}
 
 			}
 
-			assert(cluster_exit != nullptr);
+			// AYA: 5/1/2024: added the following condition
+			if((enode->is_data_loop_cmerge && number_of_cmerges == 2) || (enode->is_if_else_cmerge && number_of_cmerges == 1)) {
+				assert(cluster_exit != nullptr);
 			
-			auto pos_in_untagger_preds = std::find(un_tagger->CntrlPreds->begin(), un_tagger->CntrlPreds->end(), cluster_exit);
-			assert(pos_in_untagger_preds != un_tagger->CntrlPreds->end());
-			int idx_in_untagger_preds = pos_in_untagger_preds - un_tagger->CntrlPreds->begin();
+				auto pos_in_untagger_preds = std::find(un_tagger->CntrlPreds->begin(), un_tagger->CntrlPreds->end(), cluster_exit);
+				assert(pos_in_untagger_preds != un_tagger->CntrlPreds->end());
+				int idx_in_untagger_preds = pos_in_untagger_preds - un_tagger->CntrlPreds->begin();
 
-			// we are interested in the succ of the untagger at idx_in_untagger_preds + 1 because the very 1st succ of the untagger is preserved for the fifo of free tags
-			dirty_node = un_tagger->CntrlSuccs->at(idx_in_untagger_preds + 1);
+				// we are interested in the succ of the untagger at idx_in_untagger_preds + 1 because the very 1st succ of the untagger is preserved for the fifo of free tags
+				dirty_node = un_tagger->CntrlSuccs->at(idx_in_untagger_preds + 1);
 
-			dirty_node->is_dirty_node = true;
+				dirty_node->is_dirty_node = true;
 
-			// TEMPRARILY MAKE THE DIRTY_NODE TAGGED.. it is temporary because I will eventualy insert an UNTAGGER that will undo the TAGGER's effect
-			//dirty_node->is_tagged = true;
+				// TEMPRARILY MAKE THE DIRTY_NODE TAGGED.. it is temporary because I will eventualy insert an UNTAGGER that will undo the TAGGER's effect
+				//dirty_node->is_tagged = true;
 
-			// insert the tagger between enode->CntrlSuccs->at(0) and the predecessor that is different from the enode (i.e., master) if any
-			// FOR NOW I am only supporting components (i.e., real circuit units not steering units) that have two preds where one of them is the master enode
-			assert(dirty_node->CntrlPreds->size() == 2);
-			if(dirty_node->CntrlPreds->at(0) == un_tagger) { // through the if_else_cmerge node
-				// then insert the .at(1) pred of the dirty node in the pred of the tagger
-				tagger->CntrlPreds->push_back(dirty_node->CntrlPreds->at(1));
+				// insert the tagger between enode->CntrlSuccs->at(0) and the predecessor that is different from the enode (i.e., master) if any
+				// FOR NOW I am only supporting components (i.e., real circuit units not steering units) that have two preds where one of them is the master enode
+				assert(dirty_node->CntrlPreds->size() == 2);
+				if(dirty_node->CntrlPreds->at(0) == un_tagger) { // through the if_else_cmerge node
+					// then insert the .at(1) pred of the dirty node in the pred of the tagger
+					tagger->CntrlPreds->push_back(dirty_node->CntrlPreds->at(1));
 
-				// search for the dirty node in the succs of its .at(1) pred to replace it with the tagger
-				auto pos = std::find(dirty_node->CntrlPreds->at(1)->CntrlSuccs->begin(), dirty_node->CntrlPreds->at(1)->CntrlSuccs->end(), dirty_node);
-				assert(pos != dirty_node->CntrlPreds->at(1)->CntrlSuccs->end());
-				int idx = pos - dirty_node->CntrlPreds->at(1)->CntrlSuccs->begin();
-				dirty_node->CntrlPreds->at(1)->CntrlSuccs->at(idx) = tagger;   // replace the dirty node with the TAGGER in the succs of its preds
+					// search for the dirty node in the succs of its .at(1) pred to replace it with the tagger
+					auto pos = std::find(dirty_node->CntrlPreds->at(1)->CntrlSuccs->begin(), dirty_node->CntrlPreds->at(1)->CntrlSuccs->end(), dirty_node);
+					assert(pos != dirty_node->CntrlPreds->at(1)->CntrlSuccs->end());
+					int idx = pos - dirty_node->CntrlPreds->at(1)->CntrlSuccs->begin();
+					dirty_node->CntrlPreds->at(1)->CntrlSuccs->at(idx) = tagger;   // replace the dirty node with the TAGGER in the succs of its preds
 
-				tagger->CntrlSuccs->push_back(un_tagger);
-				un_tagger->CntrlPreds->push_back(tagger);
-				un_tagger->CntrlSuccs->push_back(dirty_node);
+					tagger->CntrlSuccs->push_back(un_tagger);
+					un_tagger->CntrlPreds->push_back(tagger);
+					un_tagger->CntrlSuccs->push_back(dirty_node);
 
-				dirty_node->CntrlPreds->at(1) = un_tagger;  // replace the original (non dirty) predecessor of the dirty_node with the UN_TAGGER
+					dirty_node->CntrlPreds->at(1) = un_tagger;  // replace the original (non dirty) predecessor of the dirty_node with the UN_TAGGER
 
-			} else {
-				assert(dirty_node->CntrlPreds->at(1) == un_tagger);  // sanity check: the .at(1) pred should be the un_tagger
-				// then insert the .at(0) pred of the dirty node in the pred of the tagger
-				tagger->CntrlPreds->push_back(dirty_node->CntrlPreds->at(0));
+				} else {
+					assert(dirty_node->CntrlPreds->at(1) == un_tagger);  // sanity check: the .at(1) pred should be the un_tagger
+					// then insert the .at(0) pred of the dirty node in the pred of the tagger
+					tagger->CntrlPreds->push_back(dirty_node->CntrlPreds->at(0));
 
-				// search for the dirty node in the succs of its .at(0) pred to replace it with the tagger
-				auto pos = std::find(dirty_node->CntrlPreds->at(0)->CntrlSuccs->begin(), dirty_node->CntrlPreds->at(0)->CntrlSuccs->end(), dirty_node);
-				assert(pos != dirty_node->CntrlPreds->at(0)->CntrlSuccs->end());
-				int idx = pos - dirty_node->CntrlPreds->at(0)->CntrlSuccs->begin();
-				dirty_node->CntrlPreds->at(0)->CntrlSuccs->at(idx) = tagger;   // replace the dirty node with the TAGGER in the succs of its preds
+					// search for the dirty node in the succs of its .at(0) pred to replace it with the tagger
+					auto pos = std::find(dirty_node->CntrlPreds->at(0)->CntrlSuccs->begin(), dirty_node->CntrlPreds->at(0)->CntrlSuccs->end(), dirty_node);
+					assert(pos != dirty_node->CntrlPreds->at(0)->CntrlSuccs->end());
+					int idx = pos - dirty_node->CntrlPreds->at(0)->CntrlSuccs->begin();
+					dirty_node->CntrlPreds->at(0)->CntrlSuccs->at(idx) = tagger;   // replace the dirty node with the TAGGER in the succs of its preds
 
-				tagger->CntrlSuccs->push_back(un_tagger);
-				un_tagger->CntrlPreds->push_back(tagger);
-				un_tagger->CntrlSuccs->push_back(dirty_node);
+					tagger->CntrlSuccs->push_back(un_tagger);
+					un_tagger->CntrlPreds->push_back(tagger);
+					un_tagger->CntrlSuccs->push_back(dirty_node);
 
-				dirty_node->CntrlPreds->at(0) = un_tagger;  // replace the original (non dirty) predecessor of the dirty_node with the UN_TAGGER
+					dirty_node->CntrlPreds->at(0) = un_tagger;  // replace the original (non dirty) predecessor of the dirty_node with the UN_TAGGER
 
+				}
+
+				// sanity check: Now the two preds of the dirty_node should be the un_tagger
+				assert(dirty_node->CntrlPreds->at(0) == un_tagger);
+				assert(dirty_node->CntrlPreds->at(1) == un_tagger);
+
+				// sanity check: we should find the dirty_node twice in the succs of the un_tagger
+				int count = 0;
+				for(int i = 0; i < un_tagger->CntrlSuccs->size(); i++) {
+					if(un_tagger->CntrlSuccs->at(i) == dirty_node)
+						count++;
+				}
+				assert(count == 2);
+				
+				// Construct and Insert the ALIGNER
+				std::vector<ENode*>* other_inputs = new std::vector<ENode*>;
+				// add all other (excluding the reference_input because it will be the reference) predecessors of the un_tagger to other_inputs
+				for(int i = 0; i < un_tagger->CntrlPreds->size(); i++) {
+					if(un_tagger->CntrlPreds->at(i) == reference_input)
+						continue;
+					other_inputs->push_back(un_tagger->CntrlPreds->at(i));
+				}
+				for(int i = 0; i < un_tagger->JustCntrlPreds->size(); i++) {
+					if(un_tagger->JustCntrlPreds->at(i) == reference_input)
+						continue;
+					other_inputs->push_back(un_tagger->JustCntrlPreds->at(i));
+				}
+				for(int i = 0; i < un_tagger->CntrlOrderPreds->size(); i++) {
+					if(un_tagger->CntrlOrderPreds->at(i) == reference_input)
+						continue;
+					other_inputs->push_back(un_tagger->CntrlOrderPreds->at(i));
+				}
+				build_Aligner(tag_info_path, reference_input, other_inputs, un_tagger, tagger);
+				
 			}
-
-			// sanity check: Now the two preds of the dirty_node should be the un_tagger
-			assert(dirty_node->CntrlPreds->at(0) == un_tagger);
-			assert(dirty_node->CntrlPreds->at(1) == un_tagger);
-
-			// sanity check: we should find the dirty_node twice in the succs of the un_tagger
-			int count = 0;
-			for(int i = 0; i < un_tagger->CntrlSuccs->size(); i++) {
-				if(un_tagger->CntrlSuccs->at(i) == dirty_node)
-					count++;
-			}
-			assert(count == 2);
 			
-			// Construct and Insert the ALIGNER
-			std::vector<ENode*>* other_inputs = new std::vector<ENode*>;
-			// add all other (excluding the reference_input because it will be the reference) predecessors of the un_tagger to other_inputs
-			for(int i = 0; i < un_tagger->CntrlPreds->size(); i++) {
-				if(un_tagger->CntrlPreds->at(i) == reference_input)
-					continue;
-				other_inputs->push_back(un_tagger->CntrlPreds->at(i));
-			}
-			for(int i = 0; i < un_tagger->JustCntrlPreds->size(); i++) {
-				if(un_tagger->JustCntrlPreds->at(i) == reference_input)
-					continue;
-				other_inputs->push_back(un_tagger->JustCntrlPreds->at(i));
-			}
-			for(int i = 0; i < un_tagger->CntrlOrderPreds->size(); i++) {
-				if(un_tagger->CntrlOrderPreds->at(i) == reference_input)
-					continue;
-				other_inputs->push_back(un_tagger->CntrlOrderPreds->at(i));
-			}
-			build_Aligner(tag_info_path, reference_input, other_inputs, un_tagger, tagger);
-						
 		}
 
 	}
 
-	// later I should (1) extend this to the case of loops, (2) make it more general for if-then-else
 }
 
 // AYA: 17/09/2023
-void CircuitGenerator::tag_cluster_nodes() {
+void CircuitGenerator::tag_cluster_nodes(const std::string& tag_info_path) {
+	int number_of_cmerges = get_cmerges_num_from_input(tag_info_path);
+
 	for(auto& enode :*enode_dag) {
-        if(enode->is_data_loop_cmerge) {
+        if(enode->is_data_loop_cmerge && number_of_cmerges == 2) {
 	        // loop over all enodes in search for any node belonging to the loop cluster that should be tagged
 	        for(auto& enode_2:*enode_dag) {
 	        	if(enode_2->BB == nullptr || enode_2->type == Tagger || enode_2->type == Un_Tagger || enode_2->type == Free_Tags_Fifo)  // skip tagger nodes because we do not tag them!
@@ -468,6 +509,7 @@ void CircuitGenerator::tag_cluster_nodes() {
 	        }
 		}
 
+		if(number_of_cmerges == 1)
 		if(enode->is_if_else_cmerge) {
 			std::vector<ENode*> if_else_branches;
 			assert(enode->old_cond_of_if_else_merge != nullptr);
@@ -543,7 +585,9 @@ void CircuitGenerator::tag_cluster_nodes() {
 }
 
 // AYA: 17/09/2023
-void CircuitGenerator::insert_tagger_untagger_wrapper() {
+void CircuitGenerator::insert_tagger_untagger_wrapper(const std::string& tag_info_path) {
+	int number_of_cmerges = get_cmerges_num_from_input(tag_info_path);
+
 	// 19/09/2023: added the following loop to fix the positioning of the Branches that are at loop exits of a loop-nest to be in the correct loop exit BBs of each loop
 	for(auto& enode :*enode_dag) {
 		if(enode->type == Branch_n) {
@@ -555,13 +599,15 @@ void CircuitGenerator::insert_tagger_untagger_wrapper() {
 	}
 
     for(auto& enode :*enode_dag) {
+    	if(number_of_cmerges ==2) 
         if(enode->is_data_loop_cmerge) {
             insert_tagger_untagger_loop_node(enode);
         } 
 
-    	if(enode->is_if_else_cmerge) {
-    		insert_tagger_untagger_if_else_node(enode);
-    	}
+        if(number_of_cmerges == 1)
+	    	if(enode->is_if_else_cmerge) {
+	    		insert_tagger_untagger_if_else_node(enode);
+	    	}
 
     }
 }
@@ -759,6 +805,7 @@ void CircuitGenerator::insert_tagger_untagger_if_else_node(ENode* if_else_master
 
 }
 
+// AYA: 24: TODO: the conditions added to take care of the case of an UNTAGGER followed by a Mux should be made more general!!
 // AYA: 17/09/2023
 void CircuitGenerator::insert_tagger_untagger_loop_node(ENode* loop_master_cmerge) {
     // takes the master Mux (that is now of type CMerge) of a particular loop since the TAGGER should be inserted for a specific loop (remember the loop clustering)
@@ -1023,18 +1070,43 @@ void CircuitGenerator::insert_tagger_untagger_loop_node(ENode* loop_master_cmerg
 					}
 					if(found_succ_out_loop) {
 						assert(branch_succ_out_loop != nullptr && branch_supp_idx != -1);
+
+						// AYA: 5/1/2024: added a condition to move the untagger below if the found_succ is a Mux or CMerge
+						ENode* actual_Enode = nullptr;
+						// assert(branch_succ_out_loop->type != Phi_c);
+						// if(branch_succ_out_loop->type == Phi_ || branch_succ_out_loop->type == Phi_n) {
+						// 	actual_Enode = branch_succ_out_loop;
+						// 	if(branch_succ_out_loop->is_if_else_cmerge) {
+						// 		assert(branch_succ_out_loop->cmerge_data_succs->size() == 1);
+						// 		branch_succ_out_loop = branch_succ_out_loop->cmerge_data_succs->at(0);
+						// 	} else {
+						// 		assert(branch_succ_out_loop->CntrlSuccs->size() == 1);
+						// 		branch_succ_out_loop = branch_succ_out_loop->CntrlSuccs->at(0);
+						// 	}
+						// }
+						if(actual_Enode == nullptr)
+							actual_Enode = enode;
+						///////////////////////////////
+
 						// insert the untagger here
-						new_un_tagger->CntrlPreds->push_back(enode);
+						new_un_tagger->CntrlPreds->push_back(actual_Enode);
 						new_un_tagger->CntrlSuccs->push_back(branch_succ_out_loop);
 
 						// search for the enode in the preds of branch_succ_out_loop to replace it with the untagger
-						auto pos = std::find(branch_succ_out_loop->CntrlPreds->begin(), branch_succ_out_loop->CntrlPreds->end(), enode);
+						auto pos = std::find(branch_succ_out_loop->CntrlPreds->begin(), branch_succ_out_loop->CntrlPreds->end(), actual_Enode);
 						assert(pos != branch_succ_out_loop->CntrlPreds->end());
 						int idx = pos - branch_succ_out_loop->CntrlPreds->begin();
 
 						branch_succ_out_loop->CntrlPreds->at(idx) = new_un_tagger;
 
-						enode->true_branch_succs->at(branch_supp_idx) = new_un_tagger;
+						if(actual_Enode->type == Branch_n)
+							actual_Enode->true_branch_succs->at(branch_supp_idx) = new_un_tagger;
+						else {
+							if(actual_Enode->is_if_else_cmerge)
+								actual_Enode->cmerge_data_succs->at(0);
+							else
+								actual_Enode->CntrlSuccs->at(0) = new_un_tagger;
+						}
 
 					} else {
 						for(int i = 0; i < enode->false_branch_succs->size(); i++) {
